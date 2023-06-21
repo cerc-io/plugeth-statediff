@@ -681,7 +681,7 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	var err error
 	var tx interfaces.Batch
 	start, logger := countStateDiffBegin(block)
-	defer countStateDiffEnd(start, logger, err)
+	defer countStateDiffEnd(start, logger, &err)
 	if sds.indexer == nil {
 		return fmt.Errorf("indexer is not set; cannot write indexed diffs")
 	}
@@ -716,7 +716,7 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	}, params, output, ipldOutput)
 
 	// TODO this anti-pattern needs to be sorted out eventually
-	if err := tx.Submit(err); err != nil {
+	if err = tx.Submit(err); err != nil {
 		return fmt.Errorf("batch transaction submission failed: %w", err)
 	}
 
