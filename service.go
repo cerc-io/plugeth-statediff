@@ -107,6 +107,9 @@ type Service struct {
 	// Map of block number to in-flight jobs (for WriteStateDiffAt)
 	currentJobs      map[uint64]JobID
 	currentJobsMutex sync.Mutex
+	// All in-progress statediff jobs
+	currentBlocks      map[string]bool
+	currentBlocksMutex sync.Mutex
 }
 
 // ID for identifying client subscriptions
@@ -169,6 +172,7 @@ func NewService(cfg Config, blockChain BlockChain, backend plugeth.Backend, inde
 		maxRetry:          defaultRetryLimit,
 		jobStatusSubs:     map[SubID]jobStatusSubscription{},
 		currentJobs:       map[uint64]JobID{},
+		currentBlocks:     map[string]bool{},
 		writeLoopParams:   ParamsWithMutex{Params: defaultWriteLoopParams},
 	}
 
@@ -674,14 +678,45 @@ func (sds *Service) WriteStateDiffFor(blockHash common.Hash, params Params) erro
 	return sds.writeStateDiffWithRetry(currentBlock, parentRoot, sds.maybeReplaceWatchedAddresses(params))
 }
 
+// Claim exclusive access for state diffing the specified block.
+// Returns true and a function to release access if successful, else false, nil.
+func (sds *Service) claimExclusiveAccess(block *types.Block) (bool, func()) {
+	sds.currentBlocksMutex.Lock()
+	defer sds.currentBlocksMutex.Unlock()
+
+	key := fmt.Sprintf("%s,%d", block.Hash().Hex(), block.NumberU64())
+	if sds.currentBlocks[key] {
+		return false, nil
+	}
+	sds.currentBlocks[key] = true
+	return true, func() {
+		sds.currentBlocksMutex.Lock()
+		defer sds.currentBlocksMutex.Unlock()
+		delete(sds.currentBlocks, key)
+	}
+}
+
 // Writes a state diff from the current block, parent state root, and provided params
 func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, params Params) error {
+	log := log.New("hash", block.Hash(), "number", block.Number())
+	if granted, relinquish := sds.claimExclusiveAccess(block); granted {
+		defer relinquish()
+	} else {
+		log.Info("Not writing, statediff in progress.")
+		return nil
+	}
+	if done, _ := sds.indexer.HasBlock(block.Hash(), block.NumberU64()); done {
+		log.Info("Not writing, statediff already done.")
+		return nil
+	}
+
 	var totalDifficulty = big.NewInt(0)
 	var receipts types.Receipts
 	var err error
 	var tx interfaces.Batch
-	start, logger := countStateDiffBegin(block)
-	defer countStateDiffEnd(start, logger, &err)
+
+	start := countStateDiffBegin(block, log)
+	defer countStateDiffEnd(start, log, &err)
 	if sds.indexer == nil {
 		return fmt.Errorf("indexer is not set; cannot write indexed diffs")
 	}
@@ -698,12 +733,12 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	}
 
 	output := func(node types2.StateLeafNode) error {
-		defer metrics.ReportAndUpdateDuration("statediff output", time.Now(), logger,
+		defer metrics.ReportAndUpdateDuration("statediff output", time.Now(), log,
 			metrics.IndexerMetrics.OutputTimer)
 		return sds.indexer.PushStateNode(tx, node, block.Hash().String())
 	}
 	ipldOutput := func(c types2.IPLD) error {
-		defer metrics.ReportAndUpdateDuration("statediff ipldOutput", time.Now(), logger,
+		defer metrics.ReportAndUpdateDuration("statediff ipldOutput", time.Now(), log,
 			metrics.IndexerMetrics.IPLDOutputTimer)
 		return sds.indexer.PushIPLD(tx, c)
 	}

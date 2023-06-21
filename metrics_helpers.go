@@ -23,9 +23,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func countStateDiffBegin(block *types.Block) (time.Time, log.Logger) {
+func countStateDiffBegin(block *types.Block, logger log.Logger) time.Time {
 	start := time.Now()
-	logger := log.New("hash", block.Hash().String(), "number", block.NumberU64())
 
 	defaultStatediffMetrics.underway.Inc(1)
 	logger.Debug("writeStateDiff BEGIN",
@@ -35,7 +34,7 @@ func countStateDiffBegin(block *types.Block) (time.Time, log.Logger) {
 		"total_time", defaultStatediffMetrics.totalProcessingTime.Value(),
 	)
 
-	return start, logger
+	return start
 }
 
 func countStateDiffEnd(start time.Time, logger log.Logger, err *error) time.Duration {

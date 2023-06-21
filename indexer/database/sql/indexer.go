@@ -25,7 +25,7 @@ import (
 	"math/big"
 	"time"
 
-	core "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/metrics"
@@ -251,7 +251,7 @@ func (sdi *StateDiffIndexer) processHeader(tx *BatchTx, header *types.Header, he
 }
 
 // processUncles publishes and indexes uncle IPLDs in Postgres
-func (sdi *StateDiffIndexer) processUncles(tx *BatchTx, headerID string, blockNumber *big.Int, unclesHash core.Hash, uncles []*types.Header) error {
+func (sdi *StateDiffIndexer) processUncles(tx *BatchTx, headerID string, blockNumber *big.Int, unclesHash common.Hash, uncles []*types.Header) error {
 	// publish and index uncles
 	uncleEncoding, err := rlp.EncodeToBytes(uncles)
 	if err != nil {
@@ -352,7 +352,7 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *BatchTx, args processArgs
 		if len(receipt.PostState) == 0 {
 			rctModel.PostStatus = receipt.Status
 		} else {
-			rctModel.PostState = core.BytesToHash(receipt.PostState).String()
+			rctModel.PostState = common.BytesToHash(receipt.PostState).String()
 		}
 
 		if err := sdi.dbWriter.upsertReceiptCID(tx.dbtx, rctModel); err != nil {
@@ -403,7 +403,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		stateModel = models.StateNodeModel{
 			BlockNumber: tx.BlockNumber,
 			HeaderID:    headerID,
-			StateKey:    core.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
+			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			CID:         shared.RemovedNodeStateCID,
 			Removed:     true,
 		}
@@ -411,12 +411,12 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		stateModel = models.StateNodeModel{
 			BlockNumber: tx.BlockNumber,
 			HeaderID:    headerID,
-			StateKey:    core.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
+			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			CID:         stateNode.AccountWrapper.CID,
 			Removed:     false,
 			Balance:     stateNode.AccountWrapper.Account.Balance.String(),
 			Nonce:       stateNode.AccountWrapper.Account.Nonce,
-			CodeHash:    core.BytesToHash(stateNode.AccountWrapper.Account.CodeHash).String(),
+			CodeHash:    common.BytesToHash(stateNode.AccountWrapper.Account.CodeHash).String(),
 			StorageRoot: stateNode.AccountWrapper.Account.Root.String(),
 		}
 	}
@@ -433,8 +433,8 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 			storageModel := models.StorageNodeModel{
 				BlockNumber: tx.BlockNumber,
 				HeaderID:    headerID,
-				StateKey:    core.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
-				StorageKey:  core.BytesToHash(storageNode.LeafKey).String(),
+				StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
+				StorageKey:  common.BytesToHash(storageNode.LeafKey).String(),
 				CID:         shared.RemovedNodeStorageCID,
 				Removed:     true,
 				Value:       []byte{},
@@ -447,8 +447,8 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		storageModel := models.StorageNodeModel{
 			BlockNumber: tx.BlockNumber,
 			HeaderID:    headerID,
-			StateKey:    core.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
-			StorageKey:  core.BytesToHash(storageNode.LeafKey).String(),
+			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
+			StorageKey:  common.BytesToHash(storageNode.LeafKey).String(),
 			CID:         storageNode.CID,
 			Removed:     false,
 			Value:       storageNode.Value,
@@ -471,6 +471,11 @@ func (sdi *StateDiffIndexer) PushIPLD(batch interfaces.Batch, ipld sdtypes.IPLD)
 	return nil
 }
 
+// HasBlock checks whether the indicated block already exists in the database.
+func (sdi *StateDiffIndexer) HasBlock(hash common.Hash, number uint64) (bool, error) {
+	return sdi.dbWriter.hasHeader(hash, number)
+}
+
 // Close satisfies io.Closer
 func (sdi *StateDiffIndexer) Close() error {
 	return sdi.dbWriter.Close()
@@ -479,7 +484,7 @@ func (sdi *StateDiffIndexer) Close() error {
 // Update the known gaps table with the gap information.
 
 // LoadWatchedAddresses reads watched addresses from the database
-func (sdi *StateDiffIndexer) LoadWatchedAddresses() ([]core.Address, error) {
+func (sdi *StateDiffIndexer) LoadWatchedAddresses() ([]common.Address, error) {
 	addressStrings := make([]string, 0)
 	pgStr := "SELECT address FROM eth_meta.watched_addresses"
 	err := sdi.dbWriter.db.Select(sdi.ctx, &addressStrings, pgStr)
@@ -487,9 +492,9 @@ func (sdi *StateDiffIndexer) LoadWatchedAddresses() ([]core.Address, error) {
 		return nil, fmt.Errorf("error loading watched addresses: %v", err)
 	}
 
-	watchedAddresses := []core.Address{}
+	watchedAddresses := []common.Address{}
 	for _, addressString := range addressStrings {
-		watchedAddresses = append(watchedAddresses, core.HexToAddress(addressString))
+		watchedAddresses = append(watchedAddresses, common.HexToAddress(addressString))
 	}
 
 	return watchedAddresses, nil
