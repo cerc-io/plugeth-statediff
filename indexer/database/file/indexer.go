@@ -17,8 +17,6 @@
 package file
 
 import (
-	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -27,21 +25,21 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lib/pq"
-	"github.com/multiformats/go-multihash"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+	"github.com/lib/pq"
+	"github.com/multiformats/go-multihash"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 const defaultCSVOutputDir = "./statediff_output"
@@ -63,7 +61,7 @@ type StateDiffIndexer struct {
 }
 
 // NewStateDiffIndexer creates a void implementation of interfaces.StateDiffIndexer
-func NewStateDiffIndexer(ctx context.Context, chainConfig *params.ChainConfig, config Config) (*StateDiffIndexer, error) {
+func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config) (*StateDiffIndexer, error) {
 	var err error
 	var writer FileWriter
 
@@ -176,7 +174,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 			metrics.IndexerMetrics.PostgresCommitTimer.Update(tDiff)
 			traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", tDiff.String())
 			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Since(start).String())
-			log.Debug(traceMsg)
+			log.Trace(traceMsg)
 			return err
 		},
 	}
@@ -258,8 +256,8 @@ func (sdi *StateDiffIndexer) processUncles(headerID string, blockNumber *big.Int
 		return err
 	}
 	preparedHash := crypto.Keccak256Hash(uncleEncoding)
-	if !bytes.Equal(preparedHash.Bytes(), unclesHash.Bytes()) {
-		return fmt.Errorf("derived uncles hash (%s) does not match the hash in the header (%s)", preparedHash.Hex(), unclesHash.Hex())
+	if preparedHash != unclesHash {
+		return fmt.Errorf("derived uncles hash (%s) does not match the hash in the header (%s)", preparedHash.String(), unclesHash.String())
 	}
 	unclesCID, err := ipld.RawdataToCid(ipld.MEthHeaderList, uncleEncoding, multihash.KECCAK_256)
 	if err != nil {
@@ -358,7 +356,7 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(args processArgs) error {
 			sdi.fileWriter.upsertIPLDNode(args.blockNumber.String(), args.logNodes[i][idx])
 			topicSet := make([]string, 4)
 			for ti, topic := range l.Topics {
-				topicSet[ti] = topic.Hex()
+				topicSet[ti] = topic.String()
 			}
 
 			logDataSet[idx] = &models.LogsModel{

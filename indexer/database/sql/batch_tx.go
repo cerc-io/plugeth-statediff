@@ -23,9 +23,9 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 const startingCacheCapacity = 1024 * 24
@@ -36,7 +36,7 @@ type BatchTx struct {
 	ctx              context.Context
 	dbtx             Tx
 	stm              string
-	quit             chan struct{}
+	quit             chan (chan<- struct{})
 	iplds            chan models.IPLDModel
 	ipldCache        models.IPLDBatch
 	removedCacheFlag *uint32
@@ -81,8 +81,9 @@ func (tx *BatchTx) cache() {
 			tx.ipldCache.Keys = append(tx.ipldCache.Keys, i.Key)
 			tx.ipldCache.Values = append(tx.ipldCache.Values, i.Data)
 			tx.cacheWg.Done()
-		case <-tx.quit:
+		case confirm := <-tx.quit:
 			tx.ipldCache = models.IPLDBatch{}
+			confirm <- struct{}{}
 			return
 		}
 	}
@@ -121,6 +122,6 @@ func (tx *BatchTx) cacheRemoved(key string, value []byte) {
 // rollback sql transaction and log any error
 func rollback(ctx context.Context, tx Tx) {
 	if err := tx.Rollback(ctx); err != nil {
-		log.Error(err.Error())
+		log.Error("error during rollback", "error", err)
 	}
 }

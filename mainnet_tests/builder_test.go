@@ -18,13 +18,10 @@ package statediff_test
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"math/big"
 	"os"
-	"sort"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -36,10 +33,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/statediff"
-	ipld2 "github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/test_helpers"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+
+	statediff "github.com/cerc-io/plugeth-statediff"
+	"github.com/cerc-io/plugeth-statediff/adapt"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/test_helpers"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
 var (
@@ -421,10 +420,6 @@ var (
 )
 
 func init() {
-	if os.Getenv("MODE") != "statediff" {
-		fmt.Println("Skipping statediff test")
-		os.Exit(0)
-	}
 	db = rawdb.NewMemoryDatabase()
 	genesisBlock = core.DefaultGenesisBlock().MustCommit(db)
 	genBy, err := rlp.EncodeToBytes(genesisBlock)
@@ -480,13 +475,8 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 		t.Error(err)
 	}
 	params := statediff.Params{}
-	builder = statediff.NewBuilder(chain.StateCache())
 
-	var tests = []struct {
-		name              string
-		startingArguments statediff.Args
-		expected          *sdtypes.StateObject
-	}{
+	var tests = []test_helpers.TestCase{
 		// note that block0 (genesis) has over 1000 nodes due to the pre-allocation for the crowd-sale
 		// it is not feasible to write a unit test of that size at this time
 		{
@@ -507,26 +497,26 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 						AccountWrapper: sdtypes.AccountWrapper{
 							Account: block1CoinbaseAccount,
 							LeafKey: block1CoinbaseHash.Bytes(),
-							CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block1CoinbaseLeafNode)).String(),
+							CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block1CoinbaseLeafNode)).String(),
 						},
 						StorageDiff: emptyStorage,
 					},
 				},
 				IPLDs: []sdtypes.IPLD{
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block1RootBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block1RootBranchNode)).String(),
 						Content: block1RootBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block1x04BranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block1x04BranchNode)).String(),
 						Content: block1x04BranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block1x040bBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block1x040bBranchNode)).String(),
 						Content: block1x040bBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block1CoinbaseLeafNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block1CoinbaseLeafNode)).String(),
 						Content: block1CoinbaseLeafNode,
 					},
 				},
@@ -552,34 +542,34 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 						AccountWrapper: sdtypes.AccountWrapper{
 							Account: block2CoinbaseAccount,
 							LeafKey: block2CoinbaseHash.Bytes(),
-							CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2CoinbaseLeafNode)).String(),
+							CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2CoinbaseLeafNode)).String(),
 						},
 						StorageDiff: emptyStorage,
 					},
 				},
 				IPLDs: []sdtypes.IPLD{
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2RootBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2RootBranchNode)).String(),
 						Content: block2RootBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2x00BranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2x00BranchNode)).String(),
 						Content: block2x00BranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2x0008BranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2x0008BranchNode)).String(),
 						Content: block2x0008BranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2x00080dBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2x00080dBranchNode)).String(),
 						Content: block2x00080dBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2MovedPremineLeafNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2MovedPremineLeafNode)).String(),
 						Content: block2MovedPremineLeafNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block2CoinbaseLeafNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block2CoinbaseLeafNode)).String(),
 						Content: block2CoinbaseLeafNode,
 					},
 				},
@@ -604,7 +594,7 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 						AccountWrapper: sdtypes.AccountWrapper{
 							Account: block3MovedPremineAccount1,
 							LeafKey: common.HexToHash("ce573ced93917e658d10e2d9009470dad72b63c898d173721194a12f2ae5e190").Bytes(),
-							CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3MovedPremineLeafNode1)).String(),
+							CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3MovedPremineLeafNode1)).String(),
 						},
 						StorageDiff: emptyStorage,
 					},
@@ -613,50 +603,50 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 						AccountWrapper: sdtypes.AccountWrapper{
 							Account: block3CoinbaseAccount,
 							LeafKey: block3CoinbaseHash.Bytes(),
-							CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3CoinbaseLeafNode)).String(),
+							CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3CoinbaseLeafNode)).String(),
 						},
 						StorageDiff: emptyStorage,
 					},
 				},
 				IPLDs: []sdtypes.IPLD{
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3RootBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3RootBranchNode)).String(),
 						Content: block3RootBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3x06BranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3x06BranchNode)).String(),
 						Content: block3x06BranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3x060eBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3x060eBranchNode)).String(),
 						Content: block3x060eBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3x0cBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3x0cBranchNode)).String(),
 						Content: block3x0cBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3x0c0eBranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3x0c0eBranchNode)).String(),
 						Content: block3x0c0eBranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3x0c0e05BranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3x0c0e05BranchNode)).String(),
 						Content: block3x0c0e05BranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3x0c0e0507BranchNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3x0c0e0507BranchNode)).String(),
 						Content: block3x0c0e0507BranchNode,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3MovedPremineLeafNode1)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3MovedPremineLeafNode1)).String(),
 						Content: block3MovedPremineLeafNode1,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3MovedPremineLeafNode2)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3MovedPremineLeafNode2)).String(),
 						Content: block3MovedPremineLeafNode2,
 					},
 					{
-						CID:     ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(block3CoinbaseLeafNode)).String(),
+						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block3CoinbaseLeafNode)).String(),
 						Content: block3CoinbaseLeafNode,
 					},
 				},
@@ -664,41 +654,11 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		diff, err := builder.BuildStateDiffObject(test.startingArguments, params)
-		if err != nil {
-			t.Error(err)
-		}
-		receivedStateDiffRlp, err := rlp.EncodeToBytes(diff)
-		if err != nil {
-			t.Error(err)
-		}
-		expectedStateDiffRlp, err := rlp.EncodeToBytes(&test.expected)
-		if err != nil {
-			t.Error(err)
-		}
-		sort.Slice(receivedStateDiffRlp, func(i, j int) bool { return receivedStateDiffRlp[i] < receivedStateDiffRlp[j] })
-		sort.Slice(expectedStateDiffRlp, func(i, j int) bool { return expectedStateDiffRlp[i] < expectedStateDiffRlp[j] })
-		if !bytes.Equal(receivedStateDiffRlp, expectedStateDiffRlp) {
-			actual, err := json.Marshal(diff)
-			if err != nil {
-				t.Error(err)
-			}
-			expected, err := json.Marshal(test.expected)
-			if err != nil {
-				t.Error(err)
-			}
-			t.Logf("Test failed: %s", test.name)
-			t.Errorf("actual state diff: %s\r\n\r\n\r\nexpected state diff: %s", actual, expected)
-		}
-	}
-	if !bytes.Equal(crypto.Keccak256(block1RootBranchNode), block1.Root().Bytes()) {
-		t.Errorf("actual state root: %s\r\nexpected state root: %s", crypto.Keccak256(block1RootBranchNode), block1.Root().Bytes())
-	}
-	if !bytes.Equal(crypto.Keccak256(block2RootBranchNode), block2.Root().Bytes()) {
-		t.Errorf("actual state root: %s\r\nexpected state root: %s", crypto.Keccak256(block2RootBranchNode), block2.Root().Bytes())
-	}
-	if !bytes.Equal(crypto.Keccak256(block3RootBranchNode), block3.Root().Bytes()) {
-		t.Errorf("actual state root: %s\r\nexpected state root: %s", crypto.Keccak256(block3RootBranchNode), block3.Root().Bytes())
-	}
+	test_helpers.RunBuilderTests(t,
+		statediff.NewBuilder(adapt.GethStateView(chain.StateCache())),
+		tests, params, test_helpers.CheckedRoots{
+			block1: block1RootBranchNode,
+			block2: block2RootBranchNode,
+			block3: block3RootBranchNode,
+		})
 }

@@ -17,33 +17,39 @@
 package statediff_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"math/big"
 	"math/rand"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
+	geth_log "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
-	statediff "github.com/ethereum/go-ethereum/statediff"
-	"github.com/ethereum/go-ethereum/statediff/test_helpers/mocks"
-	types2 "github.com/ethereum/go-ethereum/statediff/types"
 	"github.com/ethereum/go-ethereum/trie"
+
+	statediff "github.com/cerc-io/plugeth-statediff"
+	"github.com/cerc-io/plugeth-statediff/test_helpers/mocks"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
+	// "github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
+func init() {
+	// The geth sync logs are noisy, silence them
+	geth_log.Root().SetHandler(geth_log.DiscardHandler())
+	// log.TestLogger.SetLevel(2)
+}
+
 func TestServiceLoop(t *testing.T) {
-	testErrorInChainEventLoop(t)
-	testErrorInBlockLoop(t)
+	t.Run("error in chain event loop", testErrorInChainEventLoop)
+	t.Run("error in block loop", testErrorInBlockLoop)
 }
 
 var (
@@ -99,17 +105,17 @@ func testErrorInChainEventLoop(t *testing.T) {
 	blockChain := mocks.BlockChain{}
 	serviceQuit := make(chan bool)
 	service := statediff.Service{
-		Mutex:             sync.Mutex{},
 		Builder:           &builder,
 		BlockChain:        &blockChain,
 		QuitChan:          serviceQuit,
-		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
+		Subscriptions:     make(map[common.Hash]map[statediff.SubID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
 		BlockCache:        statediff.NewBlockCache(1),
 	}
 	payloadChan := make(chan statediff.Payload, 2)
 	quitChan := make(chan bool)
-	service.Subscribe(rpc.NewID(), payloadChan, quitChan, defaultParams)
+	service.Subscribe(payloadChan, quitChan, defaultParams)
+	// FIXME why is this here?
 	testRoot2 = common.HexToHash("0xTestRoot2")
 	blockMapping := make(map[common.Hash]*types.Block)
 	blockMapping[parentBlock1.Hash()] = parentBlock1
@@ -132,12 +138,9 @@ func testErrorInChainEventLoop(t *testing.T) {
 		}
 		wg.Done()
 	}()
-	service.Loop(eventsChannel)
+	service.PublishLoop(eventsChannel)
 	wg.Wait()
-	if len(payloads) != 2 {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual number of payloads does not equal expected.\nactual: %+v\nexpected: 3", len(payloads))
-	}
+	require.Equal(t, 2, len(payloads), "number of payloads")
 
 	testReceipts1Rlp, err := rlp.EncodeToBytes(&testReceipts1)
 	if err != nil {
@@ -149,34 +152,16 @@ func testErrorInChainEventLoop(t *testing.T) {
 	}
 	expectedReceiptsRlp := [][]byte{testReceipts1Rlp, testReceipts2Rlp, nil}
 	for i, payload := range payloads {
-		if !bytes.Equal(payload.ReceiptsRlp, expectedReceiptsRlp[i]) {
-			t.Error("Test failure:", t.Name())
-			t.Logf("Actual receipt rlp for payload %d does not equal expected.\nactual: %+v\nexpected: %+v", i, payload.ReceiptsRlp, expectedReceiptsRlp[i])
-		}
+		require.Equal(t, expectedReceiptsRlp[i], payload.ReceiptsRlp, "payload %d", i)
 	}
 
-	if !reflect.DeepEqual(builder.Params, defaultParams) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual params does not equal expected.\nactual:%+v\nexpected: %+v", builder.Params, defaultParams)
-	}
-	if !bytes.Equal(builder.Args.BlockHash.Bytes(), testBlock2.Hash().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual blockhash does not equal expected.\nactual:%x\nexpected: %x", builder.Args.BlockHash.Bytes(), testBlock2.Hash().Bytes())
-	}
-	if !bytes.Equal(builder.Args.OldStateRoot.Bytes(), parentBlock2.Root().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual root does not equal expected.\nactual:%x\nexpected: %x", builder.Args.OldStateRoot.Bytes(), parentBlock2.Root().Bytes())
-	}
-	if !bytes.Equal(builder.Args.NewStateRoot.Bytes(), testBlock2.Root().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual root does not equal expected.\nactual:%x\nexpected: %x", builder.Args.NewStateRoot.Bytes(), testBlock2.Root().Bytes())
-	}
+	require.Equal(t, builder.Params, defaultParams)
+	require.Equal(t, testBlock2.Hash(), builder.Args.BlockHash)
+	require.Equal(t, parentBlock2.Root(), builder.Args.OldStateRoot)
+	require.Equal(t, testBlock2.Root(), builder.Args.NewStateRoot)
 	//look up the parent block from its hash
 	expectedHashes := []common.Hash{testBlock1.ParentHash(), testBlock2.ParentHash()}
-	if !reflect.DeepEqual(blockChain.HashesLookedUp, expectedHashes) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual looked up parent hashes does not equal expected.\nactual:%+v\nexpected: %+v", blockChain.HashesLookedUp, expectedHashes)
-	}
+	require.Equal(t, expectedHashes, blockChain.HashesLookedUp)
 }
 
 func testErrorInBlockLoop(t *testing.T) {
@@ -187,13 +172,13 @@ func testErrorInBlockLoop(t *testing.T) {
 		Builder:           &builder,
 		BlockChain:        &blockChain,
 		QuitChan:          make(chan bool),
-		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
+		Subscriptions:     make(map[common.Hash]map[statediff.SubID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
 		BlockCache:        statediff.NewBlockCache(1),
 	}
 	payloadChan := make(chan statediff.Payload)
 	quitChan := make(chan bool)
-	service.Subscribe(rpc.NewID(), payloadChan, quitChan, defaultParams)
+	service.Subscribe(payloadChan, quitChan, defaultParams)
 	blockMapping := make(map[common.Hash]*types.Block)
 	blockMapping[parentBlock1.Hash()] = parentBlock1
 	blockChain.SetBlocksForHashes(blockMapping)
@@ -205,28 +190,16 @@ func testErrorInBlockLoop(t *testing.T) {
 		case <-quitChan:
 		}
 	}()
-	service.Loop(eventsChannel)
+	service.PublishLoop(eventsChannel)
 
-	if !reflect.DeepEqual(builder.Params, defaultParams) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual params does not equal expected.\nactual:%+v\nexpected: %+v", builder.Params, defaultParams)
-	}
-	if !bytes.Equal(builder.Args.BlockHash.Bytes(), testBlock1.Hash().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual blockhash does not equal expected.\nactual:%+v\nexpected: %x", builder.Args.BlockHash.Bytes(), testBlock1.Hash().Bytes())
-	}
-	if !bytes.Equal(builder.Args.OldStateRoot.Bytes(), parentBlock1.Root().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual old state root does not equal expected.\nactual:%+v\nexpected: %x", builder.Args.OldStateRoot.Bytes(), parentBlock1.Root().Bytes())
-	}
-	if !bytes.Equal(builder.Args.NewStateRoot.Bytes(), testBlock1.Root().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual new state root does not equal expected.\nactual:%+v\nexpected: %x", builder.Args.NewStateRoot.Bytes(), testBlock1.Root().Bytes())
-	}
+	require.Equal(t, defaultParams, builder.Params)
+	require.Equal(t, testBlock1.Hash(), builder.Args.BlockHash)
+	require.Equal(t, parentBlock1.Root(), builder.Args.OldStateRoot)
+	require.Equal(t, testBlock1.Root(), builder.Args.NewStateRoot)
 }
 
 func TestGetStateDiffAt(t *testing.T) {
-	mockStateDiff := types2.StateObject{
+	mockStateDiff := sdtypes.StateObject{
 		BlockNumber: testBlock1.Number(),
 		BlockHash:   testBlock1.Hash(),
 	}
@@ -260,11 +233,10 @@ func TestGetStateDiffAt(t *testing.T) {
 	blockChain.SetBlockForNumber(testBlock1, testBlock1.NumberU64())
 	blockChain.SetReceiptsForHash(testBlock1.Hash(), testReceipts1)
 	service := statediff.Service{
-		Mutex:             sync.Mutex{},
 		Builder:           &builder,
 		BlockChain:        &blockChain,
 		QuitChan:          make(chan bool),
-		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
+		Subscriptions:     make(map[common.Hash]map[statediff.SubID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
 		BlockCache:        statediff.NewBlockCache(1),
 	}
@@ -277,63 +249,37 @@ func TestGetStateDiffAt(t *testing.T) {
 		t.Error(err)
 	}
 
-	if !reflect.DeepEqual(builder.Params, defaultParams) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual params does not equal expected.\nactual:%+v\nexpected: %+v", builder.Params, defaultParams)
-	}
-	if !bytes.Equal(builder.Args.BlockHash.Bytes(), testBlock1.Hash().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual blockhash does not equal expected.\nactual:%+v\nexpected: %x", builder.Args.BlockHash.Bytes(), testBlock1.Hash().Bytes())
-	}
-	if !bytes.Equal(builder.Args.OldStateRoot.Bytes(), parentBlock1.Root().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual old state root does not equal expected.\nactual:%+v\nexpected: %x", builder.Args.OldStateRoot.Bytes(), parentBlock1.Root().Bytes())
-	}
-	if !bytes.Equal(builder.Args.NewStateRoot.Bytes(), testBlock1.Root().Bytes()) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual new state root does not equal expected.\nactual:%+v\nexpected: %x", builder.Args.NewStateRoot.Bytes(), testBlock1.Root().Bytes())
-	}
-	if !bytes.Equal(expectedStateDiffPayloadRlp, stateDiffPayloadRlp) {
-		t.Error("Test failure:", t.Name())
-		t.Logf("Actual state diff payload does not equal expected.\nactual:%+v\nexpected: %+v", expectedStateDiffPayload, stateDiffPayload)
-	}
+	require.Equal(t, defaultParams, builder.Params)
+	require.Equal(t, testBlock1.Hash(), builder.Args.BlockHash)
+	require.Equal(t, parentBlock1.Root(), builder.Args.OldStateRoot)
+	require.Equal(t, testBlock1.Root(), builder.Args.NewStateRoot)
+	require.Equal(t, stateDiffPayloadRlp, expectedStateDiffPayloadRlp)
 }
 
 type writeSub struct {
-	sub        *rpc.ClientSubscription
-	statusChan <-chan statediff.JobStatus
+	ch          <-chan statediff.JobStatus
+	unsubscribe func()
 }
 
-func makeClient(svc *statediff.Service) *rpc.Client {
-	server := rpc.NewServer()
-	api := statediff.NewPublicStateDiffAPI(svc)
-	err := server.RegisterName("statediff", api)
-	if err != nil {
-		panic(err)
-	}
-	return rpc.DialInProc(server)
+func subscribeWritesService(t *testing.T, api *statediff.PublicAPI) writeSub {
+	ctx, cancel := context.WithCancel(context.Background())
+	sub, err := api.StreamWrites(ctx)
+	require.NoError(t, err)
+	return writeSub{sub, cancel}
 }
 
-// awaitStatus awaits status update for writeStateDiffAt job
-func subscribeWrites(client *rpc.Client) (writeSub, error) {
-	statusChan := make(chan statediff.JobStatus)
-	sub, err := client.Subscribe(context.Background(), "statediff", statusChan, "streamWrites")
-	return writeSub{sub, statusChan}, err
-}
-
-func (ws writeSub) await(job statediff.JobID, timeout time.Duration) (bool, error) {
+func (ws writeSub) awaitStatus(job statediff.JobID, timeout time.Duration) (bool, error) {
+	deadline := time.After(timeout)
 	for {
 		select {
-		case err := <-ws.sub.Err():
-			return false, err
-		case status := <-ws.statusChan:
+		case status := <-ws.ch:
 			if status.Err != nil {
 				return false, status.Err
 			}
 			if status.ID == job {
 				return true, nil
 			}
-		case <-time.After(timeout):
+		case <-deadline:
 			return false, errors.New("timeout")
 		}
 	}
@@ -349,21 +295,20 @@ func TestWriteStateDiffAt(t *testing.T) {
 	blockChain.SetBlockForNumber(testBlock1, testBlock1.NumberU64())
 	blockChain.SetReceiptsForHash(testBlock1.Hash(), testReceipts1)
 
-	service := statediff.NewService(&blockChain, statediff.Config{}, &mocks.Backend{}, &indexer)
-	service.Builder = &builder
-
-	// delay to avoid subscription request being sent after statediff is written,
-	// and timeout to prevent hanging just in case it still happens
-	writeDelay := 100 * time.Millisecond
-	jobTimeout := 200 * time.Millisecond
-	client := makeClient(service)
-	defer client.Close()
-
-	ws, err := subscribeWrites(client)
+	service, err := statediff.NewService(statediff.Config{}, &blockChain, &mocks.Backend{}, &indexer)
 	require.NoError(t, err)
+	service.Builder = &builder
+	api := statediff.NewPublicAPI(service)
+
+	// delay to avoid subscription request being sent after statediff is written
+	writeDelay := 200 * time.Millisecond
+	// timeout to prevent hanging just in case it still happens
+	jobTimeout := 2 * time.Second
+
+	ws := subscribeWritesService(t, api)
 	time.Sleep(writeDelay)
 	job := service.WriteStateDiffAt(testBlock1.NumberU64(), defaultParams)
-	ok, err := ws.await(job, jobTimeout)
+	ok, err := ws.awaitStatus(job, jobTimeout)
 	require.NoError(t, err)
 	require.True(t, ok)
 
@@ -372,40 +317,28 @@ func TestWriteStateDiffAt(t *testing.T) {
 	require.Equal(t, parentBlock1.Root(), builder.Args.OldStateRoot)
 	require.Equal(t, testBlock1.Root(), builder.Args.NewStateRoot)
 
-	// unsubscribe and verify we get nothing
-	// TODO - StreamWrites receives EOF error after unsubscribing. Doesn't seem to impact
-	// anything but would be good to know why.
-	ws.sub.Unsubscribe()
-	time.Sleep(writeDelay)
+	// verify we get nothing after unsubscribing
+	ws.unsubscribe()
 	job = service.WriteStateDiffAt(testBlock1.NumberU64(), defaultParams)
-	ok, _ = ws.await(job, jobTimeout)
+	ok, _ = ws.awaitStatus(job, jobTimeout)
 	require.False(t, ok)
 
-	client.Close()
-	client = makeClient(service)
-
 	// re-subscribe and test again
-	ws, err = subscribeWrites(client)
-	require.NoError(t, err)
+	ws = subscribeWritesService(t, api)
 	time.Sleep(writeDelay)
 	job = service.WriteStateDiffAt(testBlock1.NumberU64(), defaultParams)
-	ok, err = ws.await(job, jobTimeout)
+	ok, err = ws.awaitStatus(job, jobTimeout)
 	require.NoError(t, err)
 	require.True(t, ok)
 }
 
-func TestWaitForSync(t *testing.T) {
-	testWaitForSync(t)
-	testGetSyncStatus(t)
-}
-
 // This function will create a backend and service object which includes a generic Backend
-func createServiceWithMockBackend(curBlock uint64, highestBlock uint64) (*mocks.Backend, *statediff.Service) {
+func createServiceWithMockBackend(t *testing.T, curBlock uint64, highestBlock uint64) (*mocks.Backend, *statediff.Service) {
 	builder := mocks.Builder{}
 	blockChain := mocks.BlockChain{}
-	backend := mocks.Backend{
+	backend := mocks.NewBackend(t, ethereum.SyncProgress{
 		StartingBlock:       1,
-		CurrBlock:           curBlock,
+		CurrentBlock:        curBlock,
 		HighestBlock:        highestBlock,
 		SyncedAccounts:      5,
 		SyncedAccountBytes:  5,
@@ -419,117 +352,54 @@ func createServiceWithMockBackend(curBlock uint64, highestBlock uint64) (*mocks.
 		HealedBytecodeBytes: 5,
 		HealingTrienodes:    5,
 		HealingBytecode:     5,
-	}
+	})
 
 	service := &statediff.Service{
-		Mutex:             sync.Mutex{},
 		Builder:           &builder,
 		BlockChain:        &blockChain,
 		QuitChan:          make(chan bool),
-		Subscriptions:     make(map[common.Hash]map[rpc.ID]statediff.Subscription),
+		Subscriptions:     make(map[common.Hash]map[statediff.SubID]statediff.Subscription),
 		SubscriptionTypes: make(map[common.Hash]statediff.Params),
 		BlockCache:        statediff.NewBlockCache(1),
-		BackendAPI:        &backend,
-		WaitForSync:       true,
+		BackendAPI:        backend,
+		ShouldWaitForSync: true,
 	}
-	return &backend, service
+	return backend, service
 }
 
-// This function will test to make sure that the state diff waits
-// until the blockchain has caught up to head!
-func testWaitForSync(t *testing.T) {
-	t.Log("Starting Sync")
-	_, service := createServiceWithMockBackend(10, 10)
-	err := service.WaitingForSync()
-	if err != nil {
-		t.Fatal("Sync Failed")
-	}
-	t.Log("Sync Complete")
-}
+// TestWaitForSync ensures that the service waits until the blockchain has caught up to head
+func TestWaitForSync(t *testing.T) {
+	// Trivial case
+	_, service := createServiceWithMockBackend(t, 10, 10)
+	service.WaitForSync()
 
-// This test will run the WaitForSync() at the start of the execusion
-// It will then incrementally increase the currentBlock to match the highestBlock
-// At each interval it will run the GetSyncStatus to ensure that the return value is not false.
-// It will also check to make sure that the WaitForSync() function has not completed!
-func testGetSyncStatus(t *testing.T) {
-	t.Log("Starting Get Sync Status Test")
+	// Catching-up case
 	var highestBlock uint64 = 5
-	// Create a backend and a service
-	// the backend is lagging behind the sync.
-	backend, service := createServiceWithMockBackend(0, highestBlock)
-
-	checkSyncComplete := make(chan int, 1)
+	// Create a service and a backend that is lagging behind the sync.
+	backend, service := createServiceWithMockBackend(t, 0, highestBlock)
+	syncComplete := make(chan int, 1)
 
 	go func() {
-		// Start the sync function which will wait for the sync
-		// Once the sync is complete add a value to the checkSyncComplet channel
-		t.Log("Starting Sync")
-		err := service.WaitingForSync()
-		if err != nil {
-			t.Error("Sync Failed")
-			checkSyncComplete <- 1
-		}
-		t.Log("We have finally synced!")
-		checkSyncComplete <- 0
+		service.WaitForSync()
+		syncComplete <- 0
 	}()
 
-	tables := []struct {
-		currentBlock uint64
-		highestBlock uint64
-	}{
-		{1, highestBlock},
-		{2, highestBlock},
-		{3, highestBlock},
-		{4, highestBlock},
-		{5, highestBlock},
+	// Iterate blocks, updating the current synced block
+	for currentBlock := uint64(0); currentBlock <= highestBlock; currentBlock++ {
+		backend.SetCurrentBlock(currentBlock)
+		if currentBlock < highestBlock {
+			// Ensure we are still waiting if we haven't actually reached head
+			require.Equal(t, len(syncComplete), 0)
+		}
 	}
 
-	time.Sleep(2 * time.Second)
-	for _, table := range tables {
-		// Iterate over each block
-		// Once the highest block reaches the current block the sync should complete
-
-		// Update the backend current block value
-		t.Log("Updating Current Block to: ", table.currentBlock)
-		backend.CurrBlock = table.currentBlock
-		pubEthAPI := ethapi.NewEthereumAPI(service.BackendAPI)
-		syncStatus, err := service.GetSyncStatus(pubEthAPI)
-
-		if err != nil {
-			t.Fatal("Sync Failed")
-		}
-
-		time.Sleep(2 * time.Second)
-
-		// Make sure if syncStatus is false that WaitForSync has completed!
-		if !syncStatus && len(checkSyncComplete) == 0 {
-			t.Error("Sync is complete but WaitForSync is not")
-		}
-
-		if syncStatus && len(checkSyncComplete) == 1 {
-			t.Error("Sync is not complete but WaitForSync is")
-		}
-
-		// Make sure sync hasn't completed and that the checkSyncComplete channel is empty
-		if syncStatus && len(checkSyncComplete) == 0 {
-			continue
-		}
-
-		// This code will only be run if the sync is complete and the WaitForSync function is complete
-
-		// If syncstatus is complete, make sure that the blocks match
-		if !syncStatus && table.currentBlock != table.highestBlock {
-			t.Errorf("syncStatus indicated sync was complete even when current block, %d, and highest block %d aren't equal",
-				table.currentBlock, table.highestBlock)
-		}
-
-		// Make sure that WaitForSync completed once the current block caught up to head!
-		checkSyncCompleteVal := <-checkSyncComplete
-		if checkSyncCompleteVal != 0 {
-			t.Errorf("syncStatus indicated sync was complete but the checkSyncComplete has a value of %d",
-				checkSyncCompleteVal)
-		} else {
-			t.Log("Test Passed!")
+	timeout := time.After(time.Second)
+	for {
+		select {
+		case <-syncComplete:
+			return
+		case <-timeout:
+			t.Fatal("timed out waiting for sync to complete")
 		}
 	}
 }

@@ -58,7 +58,7 @@ func processTransactions(txs []*types.Transaction) ([]*EthTx, error) {
 
 // processReceiptsAndLogs will take in receipts
 // to return IPLD node slices for eth-rct and eth-log
-func processReceiptsAndLogs(rcts []*types.Receipt) ([]*EthReceipt, [][]*EthLog, error) {
+func processReceiptsAndLogs(rcts types.Receipts) ([]*EthReceipt, [][]*EthLog, error) {
 	// Pre allocating memory.
 	ethRctNodes := make([]*EthReceipt, len(rcts))
 	ethLogNodes := make([][]*EthLog, len(rcts))
@@ -80,6 +80,31 @@ func processReceiptsAndLogs(rcts []*types.Receipt) ([]*EthReceipt, [][]*EthLog, 
 
 	return ethRctNodes, ethLogNodes, nil
 }
+
+// // processReceiptsAndLogs will take in receipts
+// // to return IPLD node slices for eth-rct and eth-log
+// func processReceiptsAndLogs(rcts []*types.Receipt) ([]*EthReceipt, [][]*EthLog, error) {
+// 	// Pre allocating memory.
+// 	ethRctNodes := make([]*EthReceipt, len(rcts))
+// 	ethLogNodes := make([][]*EthLog, len(rcts))
+
+// 	for idx, rct := range rcts {
+// 		logNodes, err := processLogs(rct.Logs)
+// 		if err != nil {
+// 			return nil, nil, err
+// 		}
+
+// 		ethRct, err := NewReceipt(rct)
+// 		if err != nil {
+// 			return nil, nil, err
+// 		}
+
+// 		ethRctNodes[idx] = ethRct
+// 		ethLogNodes[idx] = logNodes
+// 	}
+
+// 	return ethRctNodes, ethLogNodes, nil
+// }
 
 func processLogs(logs []*types.Log) ([]*EthLog, error) {
 	logNodes := make([]*EthLog, len(logs))

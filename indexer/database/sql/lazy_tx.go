@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 // Changing this to 1 would make sure only sequential COPYs were combined.
@@ -86,7 +86,7 @@ func (tx *DelayedTx) Commit(ctx context.Context) error {
 		case *copyFrom:
 			_, err := base.CopyFrom(ctx, item.tableName, item.columnNames, item.rows)
 			if err != nil {
-				log.Error("COPY error", "table", item.tableName, "err", err)
+				log.Error("COPY error", "table", item.tableName, "error", err)
 				return err
 			}
 		case cachedStmt:

@@ -22,7 +22,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 )
 
 // ListContainsString used to check if a list of strings contains a particular string
@@ -76,48 +76,24 @@ func TearDownDB(t *testing.T, db sql.Database) {
 		t.Fatal(err)
 	}
 
-	_, err = tx.Exec(ctx, `DELETE FROM eth.header_cids`)
-	if err != nil {
-		t.Fatal(err)
+	statements := []string{
+		`TRUNCATE nodes`,
+		`TRUNCATE ipld.blocks`,
+		`TRUNCATE eth.header_cids`,
+		`TRUNCATE eth.uncle_cids`,
+		`TRUNCATE eth.transaction_cids`,
+		`TRUNCATE eth.receipt_cids`,
+		`TRUNCATE eth.state_cids`,
+		`TRUNCATE eth.storage_cids`,
+		`TRUNCATE eth.log_cids`,
+		`TRUNCATE eth_meta.watched_addresses`,
 	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth.uncle_cids`)
-	if err != nil {
-		t.Fatal(err)
+	for _, stm := range statements {
+		if _, err = tx.Exec(ctx, stm); err != nil {
+			t.Fatal(err)
+		}
 	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth.transaction_cids`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth.receipt_cids`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth.state_cids`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth.storage_cids`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth.log_cids`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM ipld.blocks`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM nodes`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = tx.Exec(ctx, `DELETE FROM eth_meta.watched_addresses`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tx.Commit(ctx)
-	if err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
 }

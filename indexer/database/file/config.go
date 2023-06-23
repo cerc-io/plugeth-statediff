@@ -20,9 +20,18 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/node"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 )
+
+// Config holds params for writing out CSV or SQL files
+type Config struct {
+	Mode                     FileMode
+	OutputDir                string
+	FilePath                 string
+	WatchedAddressesFilePath string
+	NodeInfo                 node.Info
+}
 
 // FileMode to explicitly type the mode of file writer we are using
 type FileMode string
@@ -30,7 +39,7 @@ type FileMode string
 const (
 	CSV     FileMode = "CSV"
 	SQL     FileMode = "SQL"
-	Unknown FileMode = "Unknown"
+	Invalid FileMode = "Invalid"
 )
 
 // ResolveFileMode resolves a FileMode from a provided string
@@ -41,17 +50,19 @@ func ResolveFileMode(str string) (FileMode, error) {
 	case "sql":
 		return SQL, nil
 	default:
-		return Unknown, fmt.Errorf("unrecognized file type string: %s", str)
+		return Invalid, fmt.Errorf("unrecognized file type string: %s", str)
 	}
 }
 
-// Config holds params for writing out CSV or SQL files
-type Config struct {
-	Mode                     FileMode
-	OutputDir                string
-	FilePath                 string
-	WatchedAddressesFilePath string
-	NodeInfo                 node.Info
+// Set satisfies flag.Value
+func (f *FileMode) Set(v string) (err error) {
+	*f, err = ResolveFileMode(v)
+	return
+}
+
+// Set satisfies flag.Value
+func (f *FileMode) String() string {
+	return strings.ToLower(string(*f))
 }
 
 // Type satisfies interfaces.Config

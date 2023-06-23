@@ -24,15 +24,15 @@ import (
 	"math/big"
 	"os"
 
-	pg_query "github.com/pganalyze/pg_query_go/v2"
+	"github.com/ethereum/go-ethereum/common"
+	pg_query "github.com/pganalyze/pg_query_go/v4"
 	"github.com/thoas/go-funk"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
-	"github.com/ethereum/go-ethereum/statediff/types"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	nodeinfo "github.com/cerc-io/plugeth-statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/types"
 )
 
 var (
@@ -382,10 +382,7 @@ func parseWatchedAddressStatement(stmt string) (string, error) {
 	addressString := parseResult.Stmts[0].Stmt.GetInsertStmt().
 		SelectStmt.GetSelectStmt().
 		ValuesLists[0].GetList().
-		Items[0].GetAConst().
-		GetVal().
-		GetString_().
-		Str
+		Items[0].GetAConst().GetSval().Sval
 
 	return addressString, nil
 }

@@ -24,9 +24,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
 )
 
 // SQLXDriver driver, implements sql.Driver

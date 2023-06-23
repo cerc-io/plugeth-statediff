@@ -19,11 +19,11 @@ package test
 import (
 	"testing"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/file"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/mocks"
 	"github.com/stretchr/testify/require"
 )
 

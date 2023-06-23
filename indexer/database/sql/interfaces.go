@@ -20,7 +20,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
 )
 
 // Database interfaces required by the sql indexer

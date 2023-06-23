@@ -17,8 +17,8 @@
 package postgres
 
 import (
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared/schema"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
 )
 
 var _ sql.Database = &DB{}

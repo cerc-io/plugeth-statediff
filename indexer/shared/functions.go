@@ -25,13 +25,13 @@ func HandleZeroAddrPointer(to *common.Address) string {
 	if to == nil {
 		return ""
 	}
-	return to.Hex()
+	return to.String()
 }
 
 // HandleZeroAddr will return an empty string for a 0 value address
 func HandleZeroAddr(to common.Address) string {
-	if to.Hex() == "0x0000000000000000000000000000000000000000" {
+	if to == (common.Address{}) {
 		return ""
 	}
-	return to.Hex()
+	return to.String()
 }

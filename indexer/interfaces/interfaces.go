@@ -17,14 +17,13 @@
 package interfaces
 
 import (
-	"io"
 	"math/big"
 	"time"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 )
 
 // StateDiffIndexer interface required to index statediff data
@@ -41,7 +40,7 @@ type StateDiffIndexer interface {
 	SetWatchedAddresses(args []sdtypes.WatchAddressArg, currentBlockNumber *big.Int) error
 	ClearWatchedAddresses() error
 
-	io.Closer
+	Close() error
 }
 
 // Batch required for indexing data atomically

@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	metrics2 "github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
+	metrics2 "github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
 
-	"github.com/ethereum/go-ethereum/statediff/types"
+	"github.com/cerc-io/plugeth-statediff/types"
 )
 
 // SortKeys sorts the keys in the account map

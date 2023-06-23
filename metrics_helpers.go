@@ -17,24 +17,23 @@
 package statediff
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 func countStateDiffBegin(block *types.Block) (time.Time, log.Logger) {
 	start := time.Now()
-	logger := log.New("hash", block.Hash().Hex(), "number", block.NumberU64())
+	logger := log.New("hash", block.Hash().String(), "number", block.NumberU64())
 
 	defaultStatediffMetrics.underway.Inc(1)
-	logger.Debug(fmt.Sprintf("writeStateDiff BEGIN [underway=%d, succeeded=%d, failed=%d, total_time=%dms]",
-		defaultStatediffMetrics.underway.Count(),
-		defaultStatediffMetrics.succeeded.Count(),
-		defaultStatediffMetrics.failed.Count(),
-		defaultStatediffMetrics.totalProcessingTime.Value(),
-	))
+	logger.Debug("writeStateDiff BEGIN",
+		"underway", defaultStatediffMetrics.underway.Count(),
+		"succeeded", defaultStatediffMetrics.succeeded.Count(),
+		"failed", defaultStatediffMetrics.failed.Count(),
+		"total_time", defaultStatediffMetrics.totalProcessingTime.Value(),
+	)
 
 	return start, logger
 }
@@ -49,13 +48,14 @@ func countStateDiffEnd(start time.Time, logger log.Logger, err error) time.Durat
 	}
 	defaultStatediffMetrics.totalProcessingTime.Inc(duration.Milliseconds())
 
-	logger.Debug(fmt.Sprintf("writeStateDiff END (duration=%dms, err=%t) [underway=%d, succeeded=%d, failed=%d, total_time=%dms]",
-		duration.Milliseconds(), nil != err,
-		defaultStatediffMetrics.underway.Count(),
-		defaultStatediffMetrics.succeeded.Count(),
-		defaultStatediffMetrics.failed.Count(),
-		defaultStatediffMetrics.totalProcessingTime.Value(),
-	))
+	logger.Debug("writeStateDiff END",
+		"duration", duration,
+		"error", err != nil,
+		"underway", defaultStatediffMetrics.underway.Count(),
+		"succeeded", defaultStatediffMetrics.succeeded.Count(),
+		"failed", defaultStatediffMetrics.failed.Count(),
+		"total_time", defaultStatediffMetrics.totalProcessingTime.Value(),
+	)
 
 	return duration
 }
@@ -67,10 +67,10 @@ func countApiRequestBegin(methodName string, blockHashOrNumber interface{}) (tim
 	defaultStatediffMetrics.apiRequests.Inc(1)
 	defaultStatediffMetrics.apiRequestsUnderway.Inc(1)
 
-	logger.Debug(fmt.Sprintf("statediff API BEGIN [underway=%d, requests=%d])",
-		defaultStatediffMetrics.apiRequestsUnderway.Count(),
-		defaultStatediffMetrics.apiRequests.Count(),
-	))
+	logger.Debug("statediff API BEGIN",
+		"underway", defaultStatediffMetrics.apiRequestsUnderway.Count(),
+		"requests", defaultStatediffMetrics.apiRequests.Count(),
+	)
 
 	return start, logger
 }
@@ -79,11 +79,12 @@ func countApiRequestEnd(start time.Time, logger log.Logger, err error) time.Dura
 	duration := time.Since(start)
 	defaultStatediffMetrics.apiRequestsUnderway.Dec(1)
 
-	logger.Debug(fmt.Sprintf("statediff API END (duration=%dms, err=%t) [underway=%d, requests=%d]",
-		duration.Milliseconds(), nil != err,
-		defaultStatediffMetrics.apiRequestsUnderway.Count(),
-		defaultStatediffMetrics.apiRequests.Count(),
-	))
+	logger.Debug("statediff API END",
+		"duration", duration,
+		"error", err != nil,
+		"underway", defaultStatediffMetrics.apiRequestsUnderway.Count(),
+		"requests", defaultStatediffMetrics.apiRequests.Count(),
+	)
 
 	return duration
 }

@@ -24,16 +24,16 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/file"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test_helpers"
+	"github.com/stretchr/testify/require"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/test"
+	"github.com/cerc-io/plugeth-statediff/indexer/test_helpers"
 )
 
 var (
@@ -44,10 +44,6 @@ var (
 )
 
 func init() {
-	if os.Getenv("MODE") != "statediff" {
-		fmt.Println("Skipping statediff test")
-		os.Exit(0)
-	}
 	if os.Getenv("STATEDIFF_DB") != "file" {
 		fmt.Println("Skipping statediff .sql file writing mode test")
 		os.Exit(0)
@@ -87,7 +83,7 @@ func setupMainnetIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(context.Background(), chainConf, file.CSVTestConfig)
+	ind, err = file.NewStateDiffIndexer(chainConf, file.CSVTestConfig)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()

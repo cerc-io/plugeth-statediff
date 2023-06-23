@@ -26,8 +26,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
 )
 
 func TestPostgresSQLX(t *testing.T) {

@@ -18,18 +18,17 @@ package test
 
 import (
 	"bytes"
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/mocks"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 )
 
 var (
@@ -51,11 +50,6 @@ var (
 )
 
 func init() {
-	if os.Getenv("MODE") != "statediff" {
-		fmt.Println("Skipping statediff test")
-		os.Exit(0)
-	}
-
 	// canonical block at LondonBlock height
 	mockBlock = mocks.MockBlock
 	txs, rcts := mocks.MockBlock.Transactions(), mocks.MockReceipts

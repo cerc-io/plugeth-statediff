@@ -17,13 +17,12 @@
 package metrics
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/metrics"
+
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 const (
@@ -73,73 +72,65 @@ type IndexerMetricsHandles struct {
 	StateStoreCodeProcessingTimer metrics.Timer
 
 	// Fine-grained code timers
-	BuildStateDiffWithIntermediateStateNodesTimer    metrics.Timer
-	BuildStateDiffWithoutIntermediateStateNodesTimer metrics.Timer
-	CreatedAndUpdatedStateWithIntermediateNodesTimer metrics.Timer
-	DeletedOrUpdatedStateTimer                       metrics.Timer
-	BuildAccountUpdatesTimer                         metrics.Timer
-	BuildAccountCreationsTimer                       metrics.Timer
-	ResolveNodeTimer                                 metrics.Timer
-	SortKeysTimer                                    metrics.Timer
-	FindIntersectionTimer                            metrics.Timer
-	OutputTimer                                      metrics.Timer
-	IPLDOutputTimer                                  metrics.Timer
-	DifferenceIteratorNextTimer                      metrics.Timer
-	DifferenceIteratorCounter                        metrics.Counter
-	DeletedOrUpdatedStorageTimer                     metrics.Timer
-	CreatedAndUpdatedStorageTimer                    metrics.Timer
-	BuildStorageNodesIncrementalTimer                metrics.Timer
-	BuildStateTrieObjectTimer                        metrics.Timer
-	BuildStateTrieTimer                              metrics.Timer
-	BuildStateDiffObjectTimer                        metrics.Timer
-	WriteStateDiffObjectTimer                        metrics.Timer
-	CreatedAndUpdatedStateTimer                      metrics.Timer
-	BuildStorageNodesEventualTimer                   metrics.Timer
-	BuildStorageNodesFromTrieTimer                   metrics.Timer
-	BuildRemovedAccountStorageNodesTimer             metrics.Timer
-	BuildRemovedStorageNodesFromTrieTimer            metrics.Timer
-	IsWatchedAddressTimer                            metrics.Timer
+	BuildStateDiffTimer                   metrics.Timer
+	CreatedAndUpdatedStateTimer           metrics.Timer
+	DeletedOrUpdatedStateTimer            metrics.Timer
+	BuildAccountUpdatesTimer              metrics.Timer
+	BuildAccountCreationsTimer            metrics.Timer
+	ResolveNodeTimer                      metrics.Timer
+	SortKeysTimer                         metrics.Timer
+	FindIntersectionTimer                 metrics.Timer
+	OutputTimer                           metrics.Timer
+	IPLDOutputTimer                       metrics.Timer
+	DifferenceIteratorNextTimer           metrics.Timer
+	DifferenceIteratorCounter             metrics.Counter
+	DeletedOrUpdatedStorageTimer          metrics.Timer
+	CreatedAndUpdatedStorageTimer         metrics.Timer
+	BuildStorageNodesIncrementalTimer     metrics.Timer
+	BuildStateDiffObjectTimer             metrics.Timer
+	WriteStateDiffObjectTimer             metrics.Timer
+	BuildStorageNodesEventualTimer        metrics.Timer
+	BuildStorageNodesFromTrieTimer        metrics.Timer
+	BuildRemovedAccountStorageNodesTimer  metrics.Timer
+	BuildRemovedStorageNodesFromTrieTimer metrics.Timer
+	IsWatchedAddressTimer                 metrics.Timer
 }
 
 func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	ctx := IndexerMetricsHandles{
-		BlocksCounter:                                    metrics.NewCounter(),
-		TransactionsCounter:                              metrics.NewCounter(),
-		ReceiptsCounter:                                  metrics.NewCounter(),
-		LogsCounter:                                      metrics.NewCounter(),
-		AccessListEntriesCounter:                         metrics.NewCounter(),
-		FreePostgresTimer:                                metrics.NewTimer(),
-		PostgresCommitTimer:                              metrics.NewTimer(),
-		HeaderProcessingTimer:                            metrics.NewTimer(),
-		UncleProcessingTimer:                             metrics.NewTimer(),
-		TxAndRecProcessingTimer:                          metrics.NewTimer(),
-		StateStoreCodeProcessingTimer:                    metrics.NewTimer(),
-		BuildStateDiffWithIntermediateStateNodesTimer:    metrics.NewTimer(),
-		BuildStateDiffWithoutIntermediateStateNodesTimer: metrics.NewTimer(),
-		CreatedAndUpdatedStateWithIntermediateNodesTimer: metrics.NewTimer(),
-		DeletedOrUpdatedStateTimer:                       metrics.NewTimer(),
-		BuildAccountUpdatesTimer:                         metrics.NewTimer(),
-		BuildAccountCreationsTimer:                       metrics.NewTimer(),
-		ResolveNodeTimer:                                 metrics.NewTimer(),
-		SortKeysTimer:                                    metrics.NewTimer(),
-		FindIntersectionTimer:                            metrics.NewTimer(),
-		OutputTimer:                                      metrics.NewTimer(),
-		IPLDOutputTimer:                                  metrics.NewTimer(),
-		DifferenceIteratorNextTimer:                      metrics.NewTimer(),
-		DifferenceIteratorCounter:                        metrics.NewCounter(),
-		DeletedOrUpdatedStorageTimer:                     metrics.NewTimer(),
-		CreatedAndUpdatedStorageTimer:                    metrics.NewTimer(),
-		BuildStorageNodesIncrementalTimer:                metrics.NewTimer(),
-		BuildStateTrieObjectTimer:                        metrics.NewTimer(),
-		BuildStateTrieTimer:                              metrics.NewTimer(),
-		BuildStateDiffObjectTimer:                        metrics.NewTimer(),
-		WriteStateDiffObjectTimer:                        metrics.NewTimer(),
-		CreatedAndUpdatedStateTimer:                      metrics.NewTimer(),
-		BuildStorageNodesEventualTimer:                   metrics.NewTimer(),
-		BuildStorageNodesFromTrieTimer:                   metrics.NewTimer(),
-		BuildRemovedAccountStorageNodesTimer:             metrics.NewTimer(),
-		BuildRemovedStorageNodesFromTrieTimer:            metrics.NewTimer(),
-		IsWatchedAddressTimer:                            metrics.NewTimer(),
+		BlocksCounter:                         metrics.NewCounter(),
+		TransactionsCounter:                   metrics.NewCounter(),
+		ReceiptsCounter:                       metrics.NewCounter(),
+		LogsCounter:                           metrics.NewCounter(),
+		AccessListEntriesCounter:              metrics.NewCounter(),
+		FreePostgresTimer:                     metrics.NewTimer(),
+		PostgresCommitTimer:                   metrics.NewTimer(),
+		HeaderProcessingTimer:                 metrics.NewTimer(),
+		UncleProcessingTimer:                  metrics.NewTimer(),
+		TxAndRecProcessingTimer:               metrics.NewTimer(),
+		StateStoreCodeProcessingTimer:         metrics.NewTimer(),
+		BuildStateDiffTimer:                   metrics.NewTimer(),
+		CreatedAndUpdatedStateTimer:           metrics.NewTimer(),
+		DeletedOrUpdatedStateTimer:            metrics.NewTimer(),
+		BuildAccountUpdatesTimer:              metrics.NewTimer(),
+		BuildAccountCreationsTimer:            metrics.NewTimer(),
+		ResolveNodeTimer:                      metrics.NewTimer(),
+		SortKeysTimer:                         metrics.NewTimer(),
+		FindIntersectionTimer:                 metrics.NewTimer(),
+		OutputTimer:                           metrics.NewTimer(),
+		IPLDOutputTimer:                       metrics.NewTimer(),
+		DifferenceIteratorNextTimer:           metrics.NewTimer(),
+		DifferenceIteratorCounter:             metrics.NewCounter(),
+		DeletedOrUpdatedStorageTimer:          metrics.NewTimer(),
+		CreatedAndUpdatedStorageTimer:         metrics.NewTimer(),
+		BuildStorageNodesIncrementalTimer:     metrics.NewTimer(),
+		BuildStateDiffObjectTimer:             metrics.NewTimer(),
+		WriteStateDiffObjectTimer:             metrics.NewTimer(),
+		BuildStorageNodesEventualTimer:        metrics.NewTimer(),
+		BuildStorageNodesFromTrieTimer:        metrics.NewTimer(),
+		BuildRemovedAccountStorageNodesTimer:  metrics.NewTimer(),
+		BuildRemovedStorageNodesFromTrieTimer: metrics.NewTimer(),
+		IsWatchedAddressTimer:                 metrics.NewTimer(),
 	}
 	subsys := "indexer"
 	reg.Register(metricName(subsys, "blocks"), ctx.BlocksCounter)
@@ -153,9 +144,8 @@ func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	reg.Register(metricName(subsys, "t_uncle_processing"), ctx.UncleProcessingTimer)
 	reg.Register(metricName(subsys, "t_tx_receipt_processing"), ctx.TxAndRecProcessingTimer)
 	reg.Register(metricName(subsys, "t_state_store_code_processing"), ctx.StateStoreCodeProcessingTimer)
-	reg.Register(metricName(subsys, "t_build_statediff_with_intermediate_state_nodes"), ctx.BuildStateDiffWithIntermediateStateNodesTimer)
-	reg.Register(metricName(subsys, "t_build_statediff_without_intermediate_state_nodes"), ctx.BuildStateDiffWithoutIntermediateStateNodesTimer)
-	reg.Register(metricName(subsys, "t_created_and_update_state_with_intermediate_nodes"), ctx.CreatedAndUpdatedStateWithIntermediateNodesTimer)
+	reg.Register(metricName(subsys, "t_build_statediff"), ctx.BuildStateDiffTimer)
+	reg.Register(metricName(subsys, "t_created_and_update_state"), ctx.CreatedAndUpdatedStateTimer)
 	reg.Register(metricName(subsys, "t_deleted_or_updated_state"), ctx.DeletedOrUpdatedStateTimer)
 	reg.Register(metricName(subsys, "t_build_account_updates"), ctx.BuildAccountUpdatesTimer)
 	reg.Register(metricName(subsys, "t_build_account_creations"), ctx.BuildAccountCreationsTimer)
@@ -169,8 +159,6 @@ func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	reg.Register(metricName(subsys, "t_created_and_updated_storage"), ctx.CreatedAndUpdatedStorageTimer)
 	reg.Register(metricName(subsys, "t_deleted_or_updated_storage"), ctx.DeletedOrUpdatedStorageTimer)
 	reg.Register(metricName(subsys, "t_build_storage_nodes_incremental"), ctx.BuildStorageNodesIncrementalTimer)
-	reg.Register(metricName(subsys, "t_build_state_trie_object"), ctx.BuildStateTrieObjectTimer)
-	reg.Register(metricName(subsys, "t_build_state_trie"), ctx.BuildStateTrieTimer)
 	reg.Register(metricName(subsys, "t_build_statediff_object"), ctx.BuildStateDiffObjectTimer)
 	reg.Register(metricName(subsys, "t_write_statediff_object"), ctx.WriteStateDiffObjectTimer)
 	reg.Register(metricName(subsys, "t_created_and_updated_state"), ctx.CreatedAndUpdatedStateTimer)
@@ -253,7 +241,8 @@ func (met *dbMetricsHandles) Update(stats DbStats) {
 
 func ReportAndUpdateDuration(msg string, start time.Time, logger log.Logger, timer metrics.Timer) {
 	since := UpdateDuration(start, timer)
-	logger.Trace(fmt.Sprintf("%s duration=%dms", msg, since.Milliseconds()))
+	// This is very noisy so we log at Trace.
+	logger.Trace(msg, "duration", since)
 }
 
 func UpdateDuration(start time.Time, timer metrics.Timer) time.Duration {

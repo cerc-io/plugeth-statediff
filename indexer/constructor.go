@@ -20,15 +20,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/dump"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/file"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/node"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/database/dump"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 )
 
 // NewStateDiffIndexer creates and returns an implementation of the StateDiffIndexer interface.
@@ -41,7 +42,7 @@ func NewStateDiffIndexer(ctx context.Context, chainConfig *params.ChainConfig, n
 			return nil, nil, fmt.Errorf("file config is not the correct type: got %T, expected %T", config, file.Config{})
 		}
 		fc.NodeInfo = nodeInfo
-		ind, err := file.NewStateDiffIndexer(ctx, chainConfig, fc)
+		ind, err := file.NewStateDiffIndexer(chainConfig, fc)
 		return nil, ind, err
 	case shared.POSTGRES:
 		log.Info("Starting statediff service in Postgres writing mode")

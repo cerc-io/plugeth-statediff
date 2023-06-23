@@ -21,8 +21,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/state"
-
+	"github.com/cerc-io/plugeth-statediff/adapt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -68,7 +67,7 @@ func (bc *BlockChain) SetChainEvents(chainEvents []core.ChainEvent) {
 
 // SubscribeChainEvent mock method
 func (bc *BlockChain) SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription {
-	subErr := errors.New("subscription error")
+	subErr := errors.New("mock subscription error")
 
 	var eventCounter int
 	subscription := event.NewSubscription(func(quit <-chan struct{}) error {
@@ -150,8 +149,9 @@ func (bc *BlockChain) SetTd(hash common.Hash, blockNum uint64, td *big.Int) {
 	bc.TDByNum[blockNum] = td
 }
 
-func (bc *BlockChain) UnlockTrie(root common.Hash) {}
+// func (bc *BlockChain) UnlockTrie(root core.Hash) {}
 
-func (bc *BlockChain) StateCache() state.Database {
+// TODO
+func (bc *BlockChain) StateCache() adapt.StateView {
 	return nil
 }

@@ -27,11 +27,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/file"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared/schema"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test_helpers"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
+	"github.com/cerc-io/plugeth-statediff/indexer/test"
+	"github.com/cerc-io/plugeth-statediff/indexer/test_helpers"
 )
 
 const dbDirectory = "/file_indexer"
@@ -43,7 +43,7 @@ func setupLegacyCSVIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(context.Background(), test.LegacyConfig, file.CSVTestConfig)
+	ind, err = file.NewStateDiffIndexer(test.LegacyConfig, file.CSVTestConfig)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()

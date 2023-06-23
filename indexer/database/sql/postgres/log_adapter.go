@@ -18,8 +18,9 @@ package postgres
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/jackc/pgx/v4"
+
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 type LogAdapter struct {
@@ -31,31 +32,26 @@ func NewLogAdapter(l log.Logger) *LogAdapter {
 }
 
 func (l *LogAdapter) Log(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {
-	var logger log.Logger
-	if data != nil {
-		var args = make([]interface{}, 0)
-		for key, value := range data {
-			if value != nil {
-				args = append(args, key, value)
-			}
+	args := make([]interface{}, 0)
+	for key, value := range data {
+		if value != nil {
+			args = append(args, key, value)
 		}
-		logger = l.l.New(args...)
-	} else {
-		logger = l.l
 	}
 
+	logger := l.l
 	switch level {
 	case pgx.LogLevelTrace:
-		logger.Trace(msg)
+		logger.Trace(msg, args...)
 	case pgx.LogLevelDebug:
-		logger.Debug(msg)
+		logger.Debug(msg, args...)
 	case pgx.LogLevelInfo:
-		logger.Info(msg)
+		logger.Info(msg, args...)
 	case pgx.LogLevelWarn:
-		logger.Warn(msg)
+		logger.Warn(msg, args...)
 	case pgx.LogLevelError:
-		logger.Error(msg)
+		logger.Error(msg, args...)
 	default:
-		logger.New("INVALID_PGX_LOG_LEVEL", level).Error(msg)
+		logger.Error(msg, "INVALID_PGX_LOG_LEVEL", level)
 	}
 }

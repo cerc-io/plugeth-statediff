@@ -21,21 +21,20 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/file"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/mocks"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test_helpers"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
+	"github.com/cerc-io/plugeth-statediff/indexer/test_helpers"
 )
 
 // SetupTestData indexes a single mock block along with it's state nodes
@@ -69,7 +68,7 @@ func SetupTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
 	}
 }
 
-func TestPublishAndIndexHeaderIPLDs(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexHeaderIPLDs(t *testing.T, db sql.Database) {
 	pgStr := `SELECT cid, cast(td AS TEXT), cast(reward AS TEXT), block_hash, coinbase
 	FROM eth.header_cids
 	WHERE block_number = $1`
@@ -107,7 +106,7 @@ func TestPublishAndIndexHeaderIPLDs(t *testing.T, db sql.Database) {
 	require.Equal(t, mocks.MockHeaderRlp, data)
 }
 
-func TestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 	// check that txs were properly indexed and published
 	trxs := make([]string, 0)
 	pgStr := `SELECT transaction_cids.cid FROM eth.transaction_cids INNER JOIN eth.header_cids ON (transaction_cids.header_id = header_cids.block_hash)
@@ -209,7 +208,7 @@ func TestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 	}
 }
 
-func TestPublishAndIndexLogIPLDs(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexLogIPLDs(t *testing.T, db sql.Database) {
 	rcts := make([]string, 0)
 	rctsPgStr := `SELECT receipt_cids.cid FROM eth.receipt_cids, eth.transaction_cids, eth.header_cids
 			WHERE receipt_cids.tx_id = transaction_cids.tx_hash
@@ -251,7 +250,7 @@ func TestPublishAndIndexLogIPLDs(t *testing.T, db sql.Database) {
 	}
 }
 
-func TestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 	// check receipts were properly indexed and published
 	rcts := make([]string, 0)
 	pgStr := `SELECT receipt_cids.cid FROM eth.receipt_cids, eth.transaction_cids, eth.header_cids
@@ -341,7 +340,7 @@ func TestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 	}
 }
 
-func TestPublishAndIndexStateIPLDs(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexStateIPLDs(t *testing.T, db sql.Database) {
 	// check that state nodes were properly indexed and published
 	stateNodes := make([]models.StateNodeModel, 0)
 	pgStr := `SELECT state_cids.cid, CAST(state_cids.block_number as TEXT), state_cids.state_leaf_key, state_cids.removed,
@@ -366,7 +365,7 @@ func TestPublishAndIndexStateIPLDs(t *testing.T, db sql.Database) {
 		}
 		if stateNode.CID == state1CID.String() {
 			require.Equal(t, false, stateNode.Removed)
-			require.Equal(t, common.BytesToHash(mocks.ContractLeafKey).Hex(), stateNode.StateKey)
+			require.Equal(t, common.BytesToHash(mocks.ContractLeafKey).String(), stateNode.StateKey)
 			require.Equal(t, mocks.ContractLeafNode, data)
 			require.Equal(t, mocks.BlockNumber.String(), stateNode.BlockNumber)
 			require.Equal(t, "0", stateNode.Balance)
@@ -377,7 +376,7 @@ func TestPublishAndIndexStateIPLDs(t *testing.T, db sql.Database) {
 		}
 		if stateNode.CID == state2CID.String() {
 			require.Equal(t, false, stateNode.Removed)
-			require.Equal(t, common.BytesToHash(mocks.AccountLeafKey).Hex(), stateNode.StateKey)
+			require.Equal(t, common.BytesToHash(mocks.AccountLeafKey).String(), stateNode.StateKey)
 			require.Equal(t, mocks.AccountLeafNode, data)
 			require.Equal(t, mocks.BlockNumber.String(), stateNode.BlockNumber)
 			require.Equal(t, mocks.Balance.String(), stateNode.Balance)
@@ -412,11 +411,11 @@ func TestPublishAndIndexStateIPLDs(t *testing.T, db sql.Database) {
 			t.Fatal(err)
 		}
 
-		if common.BytesToHash(mocks.RemovedLeafKey).Hex() == stateNode.StateKey {
+		if common.BytesToHash(mocks.RemovedLeafKey).String() == stateNode.StateKey {
 			require.Equal(t, shared.RemovedNodeStateCID, stateNode.CID)
 			require.Equal(t, true, stateNode.Removed)
 			require.Equal(t, []byte{}, data)
-		} else if common.BytesToHash(mocks.Contract2LeafKey).Hex() == stateNode.StateKey {
+		} else if common.BytesToHash(mocks.Contract2LeafKey).String() == stateNode.StateKey {
 			require.Equal(t, shared.RemovedNodeStateCID, stateNode.CID)
 			require.Equal(t, true, stateNode.Removed)
 			require.Equal(t, []byte{}, data)
@@ -439,7 +438,7 @@ type StorageNodeModel struct {
 }
 */
 
-func TestPublishAndIndexStorageIPLDs(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexStorageIPLDs(t *testing.T, db sql.Database) {
 	// check that storage nodes were properly indexed
 	storageNodes := make([]models.StorageNodeModel, 0)
 	pgStr := `SELECT cast(storage_cids.block_number AS TEXT), storage_cids.header_id, storage_cids.cid,
@@ -455,11 +454,11 @@ func TestPublishAndIndexStorageIPLDs(t *testing.T, db sql.Database) {
 	require.Equal(t, 1, len(storageNodes))
 	require.Equal(t, models.StorageNodeModel{
 		BlockNumber: mocks.BlockNumber.String(),
-		HeaderID:    mockBlock.Header().Hash().Hex(),
+		HeaderID:    mockBlock.Header().Hash().String(),
 		CID:         storageCID.String(),
 		Removed:     false,
-		StorageKey:  common.BytesToHash(mocks.StorageLeafKey).Hex(),
-		StateKey:    common.BytesToHash(mocks.ContractLeafKey).Hex(),
+		StorageKey:  common.BytesToHash(mocks.StorageLeafKey).String(),
+		StateKey:    common.BytesToHash(mocks.ContractLeafKey).String(),
 		Value:       mocks.StorageValue,
 	}, storageNodes[0])
 	var data []byte
@@ -489,29 +488,29 @@ func TestPublishAndIndexStorageIPLDs(t *testing.T, db sql.Database) {
 	expectedStorageNodes := []models.StorageNodeModel{ // TODO: ordering is non-deterministic
 		{
 			BlockNumber: mocks.BlockNumber.String(),
-			HeaderID:    mockBlock.Header().Hash().Hex(),
+			HeaderID:    mockBlock.Header().Hash().String(),
 			CID:         shared.RemovedNodeStorageCID,
 			Removed:     true,
-			StorageKey:  common.BytesToHash(mocks.Storage2LeafKey).Hex(),
-			StateKey:    common.BytesToHash(mocks.Contract2LeafKey).Hex(),
+			StorageKey:  common.BytesToHash(mocks.Storage2LeafKey).String(),
+			StateKey:    common.BytesToHash(mocks.Contract2LeafKey).String(),
 			Value:       []byte{},
 		},
 		{
 			BlockNumber: mocks.BlockNumber.String(),
-			HeaderID:    mockBlock.Header().Hash().Hex(),
+			HeaderID:    mockBlock.Header().Hash().String(),
 			CID:         shared.RemovedNodeStorageCID,
 			Removed:     true,
-			StorageKey:  common.BytesToHash(mocks.Storage3LeafKey).Hex(),
-			StateKey:    common.BytesToHash(mocks.Contract2LeafKey).Hex(),
+			StorageKey:  common.BytesToHash(mocks.Storage3LeafKey).String(),
+			StateKey:    common.BytesToHash(mocks.Contract2LeafKey).String(),
 			Value:       []byte{},
 		},
 		{
 			BlockNumber: mocks.BlockNumber.String(),
-			HeaderID:    mockBlock.Header().Hash().Hex(),
+			HeaderID:    mockBlock.Header().Hash().String(),
 			CID:         shared.RemovedNodeStorageCID,
 			Removed:     true,
-			StorageKey:  common.BytesToHash(mocks.RemovedLeafKey).Hex(),
-			StateKey:    common.BytesToHash(mocks.ContractLeafKey).Hex(),
+			StorageKey:  common.BytesToHash(mocks.RemovedLeafKey).String(),
+			StateKey:    common.BytesToHash(mocks.ContractLeafKey).String(),
 			Value:       []byte{},
 		},
 	}
@@ -690,7 +689,7 @@ func TestPublishAndIndexHeaderNonCanonical(t *testing.T, db sql.Database) {
 	}
 }
 
-func TestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed transactions
 	pgStr := `SELECT CAST(block_number as TEXT), header_id, tx_hash, cid, dst, src, index,
 		tx_type, CAST(value as TEXT)
@@ -855,7 +854,7 @@ func TestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database) 
 	}
 }
 
-func TestPublishAndIndexReceiptsNonCanonical(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexReceiptsNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed receipts
 	pgStr := `SELECT CAST(block_number as TEXT), header_id, tx_id, cid, post_status, post_state, contract
 		FROM eth.receipt_cids
@@ -947,7 +946,7 @@ func TestPublishAndIndexReceiptsNonCanonical(t *testing.T, db sql.Database) {
 	}
 }
 
-func TestPublishAndIndexLogsNonCanonical(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexLogsNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed logs
 	pgStr := `SELECT address, topic0, topic1, topic2, topic3, data
 		FROM eth.log_cids
@@ -1002,7 +1001,7 @@ func TestPublishAndIndexLogsNonCanonical(t *testing.T, db sql.Database) {
 		for i, log := range mockRct.rct.Logs {
 			topicSet := make([]string, 4)
 			for ti, topic := range log.Topics {
-				topicSet[ti] = topic.Hex()
+				topicSet[ti] = topic.String()
 			}
 
 			expectedLog := models.LogsModel{
@@ -1021,7 +1020,7 @@ func TestPublishAndIndexLogsNonCanonical(t *testing.T, db sql.Database) {
 	}
 }
 
-func TestPublishAndIndexStateNonCanonical(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexStateNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed state nodes
 	pgStr := `SELECT state_leaf_key, removed, cid, diff
 					FROM eth.state_cids
@@ -1035,7 +1034,7 @@ func TestPublishAndIndexStateNonCanonical(t *testing.T, db sql.Database) {
 	expectedStateNodes := make([]models.StateNodeModel, 0)
 	for i, stateDiff := range mocks.StateDiffs {
 		expectedStateNodes = append(expectedStateNodes, models.StateNodeModel{
-			StateKey: common.BytesToHash(stateDiff.AccountWrapper.LeafKey).Hex(),
+			StateKey: common.BytesToHash(stateDiff.AccountWrapper.LeafKey).String(),
 			Removed:  stateDiff.Removed,
 			CID:      stateNodeCIDs[i].String(),
 			Diff:     true,
@@ -1046,7 +1045,7 @@ func TestPublishAndIndexStateNonCanonical(t *testing.T, db sql.Database) {
 	expectedNonCanonicalBlock2StateNodes := make([]models.StateNodeModel, 0)
 	for i, stateDiff := range mocks.StateDiffs[:2] {
 		expectedNonCanonicalBlock2StateNodes = append(expectedNonCanonicalBlock2StateNodes, models.StateNodeModel{
-			StateKey: common.BytesToHash(stateDiff.AccountWrapper.LeafKey).Hex(),
+			StateKey: common.BytesToHash(stateDiff.AccountWrapper.LeafKey).String(),
 			Removed:  stateDiff.Removed,
 			CID:      stateNodeCIDs[i].String(),
 			Diff:     true,
@@ -1082,7 +1081,7 @@ func TestPublishAndIndexStateNonCanonical(t *testing.T, db sql.Database) {
 	assert.ElementsMatch(t, expectedNonCanonicalBlock2StateNodes, stateNodes)
 }
 
-func TestPublishAndIndexStorageNonCanonical(t *testing.T, db sql.Database) {
+func DoTestPublishAndIndexStorageNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed storage nodes
 	pgStr := `SELECT storage_leaf_key, state_leaf_key, removed, cid, diff, val
 					FROM eth.storage_cids
@@ -1098,8 +1097,8 @@ func TestPublishAndIndexStorageNonCanonical(t *testing.T, db sql.Database) {
 	for _, stateDiff := range mocks.StateDiffs {
 		for _, storageNode := range stateDiff.StorageDiff {
 			expectedStorageNodes = append(expectedStorageNodes, models.StorageNodeModel{
-				StateKey:   common.BytesToHash(stateDiff.AccountWrapper.LeafKey).Hex(),
-				StorageKey: common.BytesToHash(storageNode.LeafKey).Hex(),
+				StateKey:   common.BytesToHash(stateDiff.AccountWrapper.LeafKey).String(),
+				StorageKey: common.BytesToHash(storageNode.LeafKey).String(),
 				Removed:    storageNode.Removed,
 				CID:        storageNodeCIDs[storageNodeIndex].String(),
 				Diff:       true,
@@ -1115,8 +1114,8 @@ func TestPublishAndIndexStorageNonCanonical(t *testing.T, db sql.Database) {
 	for _, stateDiff := range mocks.StateDiffs[:2] {
 		for _, storageNode := range stateDiff.StorageDiff {
 			expectedNonCanonicalBlock2StorageNodes = append(expectedNonCanonicalBlock2StorageNodes, models.StorageNodeModel{
-				StateKey:   common.BytesToHash(stateDiff.AccountWrapper.LeafKey).Hex(),
-				StorageKey: common.BytesToHash(storageNode.LeafKey).Hex(),
+				StateKey:   common.BytesToHash(stateDiff.AccountWrapper.LeafKey).String(),
+				StorageKey: common.BytesToHash(storageNode.LeafKey).String(),
 				Removed:    storageNode.Removed,
 				CID:        storageNodeCIDs[storageNodeIndex].String(),
 				Diff:       true,

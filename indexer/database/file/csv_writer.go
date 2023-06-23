@@ -25,15 +25,15 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/thoas/go-funk"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared/schema"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	nodeinfo "github.com/cerc-io/plugeth-statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
 var (
@@ -92,9 +92,6 @@ func newFileWriter(path string) (ret fileWriter, err error) {
 }
 
 func makeFileWriters(dir string, tables []*schema.Table) (fileWriters, error) {
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, err
-	}
 	writers := fileWriters{}
 	for _, tbl := range tables {
 		w, err := newFileWriter(TableFilePath(dir, tbl.Name))

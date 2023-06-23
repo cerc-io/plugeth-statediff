@@ -23,48 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 )
-
-// DriverType to explicitly type the kind of sql driver we are using
-type DriverType string
-
-const (
-	PGX     DriverType = "PGX"
-	SQLX    DriverType = "SQLX"
-	Unknown DriverType = "Unknown"
-)
-
-// Env variables
-const (
-	DATABASE_NAME     = "DATABASE_NAME"
-	DATABASE_HOSTNAME = "DATABASE_HOSTNAME"
-	DATABASE_PORT     = "DATABASE_PORT"
-	DATABASE_USER     = "DATABASE_USER"
-	DATABASE_PASSWORD = "DATABASE_PASSWORD"
-)
-
-// ResolveDriverType resolves a DriverType from a provided string
-func ResolveDriverType(str string) (DriverType, error) {
-	switch strings.ToLower(str) {
-	case "pgx", "pgxpool":
-		return PGX, nil
-	case "sqlx":
-		return SQLX, nil
-	default:
-		return Unknown, fmt.Errorf("unrecognized driver type string: %s", str)
-	}
-}
-
-// TestConfig specifies default parameters for connecting to a testing DB
-var TestConfig = Config{
-	Hostname:     "localhost",
-	Port:         8077,
-	DatabaseName: "cerc_testing",
-	Username:     "vdbm",
-	Password:     "password",
-	Driver:       SQLX,
-}
 
 // Config holds params for a Postgres db
 type Config struct {
@@ -98,6 +58,34 @@ type Config struct {
 	CopyFrom bool
 }
 
+// DriverType to explicitly type the kind of sql driver we are using
+type DriverType string
+
+const (
+	PGX     DriverType = "PGX"
+	SQLX    DriverType = "SQLX"
+	Invalid DriverType = "Invalid"
+)
+
+// Env variables
+const (
+	DATABASE_NAME     = "DATABASE_NAME"
+	DATABASE_HOSTNAME = "DATABASE_HOSTNAME"
+	DATABASE_PORT     = "DATABASE_PORT"
+	DATABASE_USER     = "DATABASE_USER"
+	DATABASE_PASSWORD = "DATABASE_PASSWORD"
+)
+
+// TestConfig specifies default parameters for connecting to a testing DB
+var TestConfig = Config{
+	Hostname:     "localhost",
+	Port:         8077,
+	DatabaseName: "cerc_testing",
+	Username:     "vdbm",
+	Password:     "password",
+	Driver:       SQLX,
+}
+
 // Type satisfies interfaces.Config
 func (c Config) Type() shared.DBType {
 	return shared.POSTGRES
@@ -116,6 +104,7 @@ func (c Config) DbConnectionString() string {
 	return fmt.Sprintf("postgresql://%s:%d/%s?sslmode=disable", c.Hostname, c.Port, c.DatabaseName)
 }
 
+// WithEnv overrides the config with env variables, returning a new instance
 func (c Config) WithEnv() (Config, error) {
 	if val := os.Getenv(DATABASE_NAME); val != "" {
 		c.DatabaseName = val
@@ -137,4 +126,27 @@ func (c Config) WithEnv() (Config, error) {
 		c.Password = val
 	}
 	return c, nil
+}
+
+// ResolveDriverType resolves a DriverType from a provided string
+func ResolveDriverType(str string) (DriverType, error) {
+	switch strings.ToLower(str) {
+	case "pgx", "pgxpool":
+		return PGX, nil
+	case "sqlx":
+		return SQLX, nil
+	default:
+		return Invalid, fmt.Errorf("unrecognized driver type string: %s", str)
+	}
+}
+
+// Set satisfies flag.Value
+func (d *DriverType) Set(v string) (err error) {
+	*d, err = ResolveDriverType(v)
+	return
+}
+
+// String satisfies flag.Value
+func (d *DriverType) String() string {
+	return strings.ToLower(string(*d))
 }

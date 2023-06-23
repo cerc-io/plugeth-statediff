@@ -28,7 +28,7 @@ const (
 	POSTGRES DBType = "Postgres"
 	DUMP     DBType = "Dump"
 	FILE     DBType = "File"
-	UNKNOWN  DBType = "Unknown"
+	INVALID  DBType = "Invalid"
 )
 
 // ResolveDBType resolves a DBType from a provided string
@@ -41,6 +41,17 @@ func ResolveDBType(str string) (DBType, error) {
 	case "file", "f", "fs":
 		return FILE, nil
 	default:
-		return UNKNOWN, fmt.Errorf("unrecognized db type string: %s", str)
+		return INVALID, fmt.Errorf("unrecognized db type string: %s", str)
 	}
+}
+
+// Set satisfies flag.Value
+func (dbt *DBType) Set(v string) (err error) {
+	*dbt, err = ResolveDBType(v)
+	return
+}
+
+// String satisfies flag.Value
+func (dbt *DBType) String() string {
+	return strings.ToLower(string(*dbt))
 }

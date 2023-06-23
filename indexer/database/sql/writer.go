@@ -25,8 +25,8 @@ import (
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
 )
 
 // Writer handles processing and writing of indexed IPLD objects to Postgres

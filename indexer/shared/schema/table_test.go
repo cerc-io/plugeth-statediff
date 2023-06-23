@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	. "github.com/ethereum/go-ethereum/statediff/indexer/shared/schema"
+	. "github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
 )
 
 var testHeaderTable = Table{

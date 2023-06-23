@@ -19,12 +19,12 @@ package file
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	nodeinfo "github.com/ethereum/go-ethereum/statediff/indexer/node"
-	"github.com/ethereum/go-ethereum/statediff/types"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	nodeinfo "github.com/cerc-io/plugeth-statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/types"
 )
 
 // Writer interface required by the file indexer

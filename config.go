@@ -23,7 +23,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/utils"
 )
 
 // Config contains instantiation parameters for the state diffing service
@@ -40,7 +42,7 @@ type Config struct {
 	NumWorkers uint
 	// Should the statediff service wait until geth has synced to the head of the blockchain?
 	WaitForSync bool
-	// Context
+	// Context used during DB initialization
 	Context context.Context
 }
 
@@ -58,7 +60,7 @@ type Params struct {
 func (p *Params) ComputeWatchedAddressesLeafPaths() {
 	p.watchedAddressesLeafPaths = make([][]byte, len(p.WatchedAddresses))
 	for i, address := range p.WatchedAddresses {
-		p.watchedAddressesLeafPaths[i] = keybytesToHex(crypto.Keccak256(address.Bytes()))
+		p.watchedAddressesLeafPaths[i] = utils.KeybytesToHex(crypto.Keccak256(address[:]))
 	}
 }
 
@@ -72,16 +74,4 @@ type ParamsWithMutex struct {
 type Args struct {
 	OldStateRoot, NewStateRoot, BlockHash common.Hash
 	BlockNumber                           *big.Int
-}
-
-// https://github.com/ethereum/go-ethereum/blob/master/trie/encoding.go#L97
-func keybytesToHex(str []byte) []byte {
-	l := len(str)*2 + 1
-	var nibbles = make([]byte, l)
-	for i, b := range str {
-		nibbles[i*2] = b / 16
-		nibbles[i*2+1] = b % 16
-	}
-	nibbles[l-1] = 16
-	return nibbles
 }

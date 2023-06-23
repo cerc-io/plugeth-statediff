@@ -17,7 +17,6 @@
 package file_test
 
 import (
-	"context"
 	"errors"
 	"math/big"
 	"os"
@@ -25,15 +24,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/file"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/mocks"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
+	"github.com/cerc-io/plugeth-statediff/indexer/test"
 )
 
 func setupCSVIndexer(t *testing.T) {
-	file.CSVTestConfig.OutputDir = "./statediffing_test"
-
 	if _, err := os.Stat(file.CSVTestConfig.OutputDir); !errors.Is(err, os.ErrNotExist) {
 		err := os.RemoveAll(file.CSVTestConfig.OutputDir)
 		require.NoError(t, err)
@@ -44,7 +41,7 @@ func setupCSVIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(context.Background(), mocks.TestConfig, file.CSVTestConfig)
+	ind, err = file.NewStateDiffIndexer(mocks.TestConfig, file.CSVTestConfig)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()
@@ -69,7 +66,7 @@ func TestCSVFileIndexer(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexHeaderIPLDs(t, db)
+		test.DoTestPublishAndIndexHeaderIPLDs(t, db)
 	})
 
 	t.Run("Publish and index transaction IPLDs in a single tx", func(t *testing.T) {
@@ -77,7 +74,7 @@ func TestCSVFileIndexer(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexTransactionIPLDs(t, db)
+		test.DoTestPublishAndIndexTransactionIPLDs(t, db)
 	})
 
 	t.Run("Publish and index log IPLDs for multiple receipt of a specific block", func(t *testing.T) {
@@ -85,7 +82,7 @@ func TestCSVFileIndexer(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexLogIPLDs(t, db)
+		test.DoTestPublishAndIndexLogIPLDs(t, db)
 	})
 
 	t.Run("Publish and index receipt IPLDs in a single tx", func(t *testing.T) {
@@ -93,7 +90,7 @@ func TestCSVFileIndexer(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexReceiptIPLDs(t, db)
+		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
 	})
 
 	t.Run("Publish and index state IPLDs in a single tx", func(t *testing.T) {
@@ -101,7 +98,7 @@ func TestCSVFileIndexer(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexStateIPLDs(t, db)
+		test.DoTestPublishAndIndexStateIPLDs(t, db)
 	})
 
 	t.Run("Publish and index storage IPLDs in a single tx", func(t *testing.T) {
@@ -109,7 +106,7 @@ func TestCSVFileIndexer(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexStorageIPLDs(t, db)
+		test.DoTestPublishAndIndexStorageIPLDs(t, db)
 	})
 }
 
@@ -127,7 +124,7 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexTransactionsNonCanonical(t, db)
+		test.DoTestPublishAndIndexTransactionsNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index receipts", func(t *testing.T) {
@@ -135,7 +132,7 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexReceiptsNonCanonical(t, db)
+		test.DoTestPublishAndIndexReceiptsNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index logs", func(t *testing.T) {
@@ -143,7 +140,7 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexLogsNonCanonical(t, db)
+		test.DoTestPublishAndIndexLogsNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index state nodes", func(t *testing.T) {
@@ -151,7 +148,7 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexStateNonCanonical(t, db)
+		test.DoTestPublishAndIndexStateNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index storage nodes", func(t *testing.T) {
@@ -159,7 +156,7 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 		dumpCSVFileData(t)
 		defer tearDownCSV(t)
 
-		test.TestPublishAndIndexStorageNonCanonical(t, db)
+		test.DoTestPublishAndIndexStorageNonCanonical(t, db)
 	})
 }
 

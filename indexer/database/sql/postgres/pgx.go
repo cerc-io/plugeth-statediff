@@ -20,16 +20,16 @@ import (
 	"context"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
 )
 
 // PGXDriver driver, implements sql.Driver
@@ -96,7 +96,7 @@ func MakeConfig(config Config) (*pgxpool.Config, error) {
 	}
 
 	if config.LogStatements {
-		conf.ConnConfig.Logger = NewLogAdapter(log.New())
+		conf.ConnConfig.Logger = NewLogAdapter(log.DefaultLogger)
 	}
 
 	return conf, nil
@@ -106,8 +106,10 @@ func (pgx *PGXDriver) createNode() error {
 	_, err := pgx.pool.Exec(
 		pgx.ctx,
 		createNodeStm,
-		pgx.nodeInfo.GenesisBlock, pgx.nodeInfo.NetworkID,
-		pgx.nodeInfo.ID, pgx.nodeInfo.ClientName,
+		pgx.nodeInfo.GenesisBlock,
+		pgx.nodeInfo.NetworkID,
+		pgx.nodeInfo.ID,
+		pgx.nodeInfo.ClientName,
 		pgx.nodeInfo.ChainID)
 	if err != nil {
 		return ErrUnableToSetNode(err)

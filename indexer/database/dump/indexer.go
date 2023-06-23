@@ -17,7 +17,7 @@
 package dump
 
 import (
-	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -28,15 +28,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/metrics"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 var _ interfaces.StateDiffIndexer = &StateDiffIndexer{}
@@ -199,8 +200,8 @@ func (sdi *StateDiffIndexer) processUncles(tx *BatchTx, headerID string, blockNu
 		return err
 	}
 	preparedHash := crypto.Keccak256Hash(uncleEncoding)
-	if !bytes.Equal(preparedHash.Bytes(), unclesHash.Bytes()) {
-		return fmt.Errorf("derived uncles hash (%s) does not match the hash in the header (%s)", preparedHash.Hex(), unclesHash.Hex())
+	if preparedHash != unclesHash {
+		return fmt.Errorf("derived uncles hash (%s) does not match the hash in the header (%s)", preparedHash.String(), unclesHash.String())
 	}
 	unclesCID, err := ipld.RawdataToCid(ipld.MEthHeaderList, uncleEncoding, multihash.KECCAK_256)
 	if err != nil {
@@ -294,7 +295,7 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *BatchTx, args processArgs
 		if len(receipt.PostState) == 0 {
 			rctModel.PostStatus = receipt.Status
 		} else {
-			rctModel.PostState = common.Bytes2Hex(receipt.PostState)
+			rctModel.PostState = hex.EncodeToString(receipt.PostState)
 		}
 
 		if _, err := fmt.Fprintf(sdi.dump, "%+v\r\n", rctModel); err != nil {
@@ -305,7 +306,7 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *BatchTx, args processArgs
 		for idx, l := range receipt.Logs {
 			topicSet := make([]string, 4)
 			for ti, topic := range l.Topics {
-				topicSet[ti] = topic.Hex()
+				topicSet[ti] = topic.String()
 			}
 
 			logDataSet[idx] = &models.LogsModel{

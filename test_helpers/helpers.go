@@ -27,6 +27,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
+
+	"github.com/cerc-io/plugeth-statediff/utils"
 )
 
 func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance, baseFee *big.Int, initialGasLimit uint64) *types.Block {
@@ -65,7 +67,7 @@ func TestSelfDestructChainGen(i int, block *core.BlockGen) {
 		// Block 2 is mined by TestBankAddress
 		// TestBankAddress self-destructs the contract
 		block.SetCoinbase(TestBankAddress)
-		data := common.Hex2Bytes("43D726D6")
+		data := utils.Hex2Bytes("43D726D6")
 		tx, _ := types.SignTx(types.NewTransaction(1, ContractAddr, big.NewInt(0), 100000, big.NewInt(params.GWei), data), signer, TestBankKey)
 		block.AddTx(tx)
 	}
@@ -97,7 +99,7 @@ func TestChainGen(i int, block *core.BlockGen) {
 		block.SetCoinbase(Account2Addr)
 		//put function: c16431b9
 		//close function: 43d726d6
-		data := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003")
+		data := utils.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003")
 		tx, _ := types.SignTx(types.NewTransaction(block.TxNonce(TestBankAddress), ContractAddr, big.NewInt(0), params.TxGasContractCreation, big.NewInt(params.GWei), data), signer, TestBankKey)
 		block.AddTx(tx)
 	case 3:
@@ -105,9 +107,9 @@ func TestChainGen(i int, block *core.BlockGen) {
 		// Two set the two original slot positions to 0 and one sets another position to a new value
 		// Block 4 is mined by Account2Addr
 		block.SetCoinbase(Account2Addr)
-		data1 := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-		data2 := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000")
-		data3 := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000009")
+		data1 := utils.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+		data2 := utils.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000")
+		data3 := utils.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000009")
 
 		nonce := block.TxNonce(TestBankAddress)
 		tx1, _ := types.SignTx(types.NewTransaction(nonce, ContractAddr, big.NewInt(0), 100000, big.NewInt(params.InitialBaseFee), data1), signer, TestBankKey)
@@ -123,8 +125,8 @@ func TestChainGen(i int, block *core.BlockGen) {
 		// It sets the one storage value to zero and the other to new value.
 		// Block 5 is mined by Account1Addr
 		block.SetCoinbase(Account1Addr)
-		data1 := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000")
-		data2 := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003")
+		data1 := utils.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000")
+		data2 := utils.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003")
 		nonce := block.TxNonce(TestBankAddress)
 		tx1, _ := types.SignTx(types.NewTransaction(nonce, ContractAddr, big.NewInt(0), 100000, big.NewInt(params.InitialBaseFee), data1), signer, TestBankKey)
 		nonce++
@@ -135,7 +137,7 @@ func TestChainGen(i int, block *core.BlockGen) {
 		// Block 6 has a tx from Account1Key which self-destructs the contract, it transfers no value
 		// Block 6 is mined by Account2Addr
 		block.SetCoinbase(Account2Addr)
-		data := common.Hex2Bytes("43D726D6")
+		data := utils.Hex2Bytes("43D726D6")
 		tx, _ := types.SignTx(types.NewTransaction(block.TxNonce(Account1Addr), ContractAddr, big.NewInt(0), 100000, big.NewInt(params.InitialBaseFee), data), signer, Account1Key)
 		block.AddTx(tx)
 	}
@@ -158,8 +160,8 @@ func TestChainGenWithInternalLeafNode(i int, block *core.BlockGen) {
 		// Block 3 has two transactions which set slots 223 and 648 with small values
 		// The goal here is to induce a branch node with an internalized leaf node
 		block.SetCoinbase(TestBankAddress)
-		data1 := common.Hex2Bytes("C16431B90000000000000000000000000000000000000000000000000000000000009dab0000000000000000000000000000000000000000000000000000000000000001")
-		data2 := common.Hex2Bytes("C16431B90000000000000000000000000000000000000000000000000000000000019c5d0000000000000000000000000000000000000000000000000000000000000002")
+		data1 := utils.Hex2Bytes("C16431B90000000000000000000000000000000000000000000000000000000000009dab0000000000000000000000000000000000000000000000000000000000000001")
+		data2 := utils.Hex2Bytes("C16431B90000000000000000000000000000000000000000000000000000000000019c5d0000000000000000000000000000000000000000000000000000000000000002")
 
 		nonce := block.TxNonce(TestBankAddress)
 		tx1, _ := types.SignTx(types.NewTransaction(nonce, ContractAddr, big.NewInt(0), 100000, big.NewInt(params.InitialBaseFee), data1), signer, TestBankKey)

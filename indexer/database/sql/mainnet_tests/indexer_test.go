@@ -18,20 +18,18 @@ package mainnet_tests
 
 import (
 	"context"
-	"fmt"
 	"math/big"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/test"
+	"github.com/cerc-io/plugeth-statediff/indexer/test_helpers"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test_helpers"
 )
 
 var (
@@ -40,13 +38,6 @@ var (
 	ind       interfaces.StateDiffIndexer
 	chainConf = params.MainnetChainConfig
 )
-
-func init() {
-	if os.Getenv("MODE") != "statediff" {
-		fmt.Println("Skipping statediff test")
-		os.Exit(0)
-	}
-}
 
 func TestMainnetIndexer(t *testing.T) {
 	conf := test_helpers.GetTestConfig()

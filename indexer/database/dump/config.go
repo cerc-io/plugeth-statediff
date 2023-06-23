@@ -21,8 +21,13 @@ import (
 	"io"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 )
+
+// Config for data dump
+type Config struct {
+	Dump io.WriteCloser
+}
 
 // DumpType to explicitly type the dump destination
 type DumpType string
@@ -31,8 +36,13 @@ const (
 	STDOUT  = "Stdout"
 	STDERR  = "Stderr"
 	DISCARD = "Discard"
-	UNKNOWN = "Unknown"
+	INVALID = "Invalid"
 )
+
+// Type satisfies interfaces.Config
+func (c Config) Type() shared.DBType {
+	return shared.DUMP
+}
 
 // ResolveDumpType resolves the dump type for the provided string
 func ResolveDumpType(str string) (DumpType, error) {
@@ -44,36 +54,27 @@ func ResolveDumpType(str string) (DumpType, error) {
 	case "discard", "void", "devnull", "dev null":
 		return DISCARD, nil
 	default:
-		return UNKNOWN, fmt.Errorf("unrecognized dump type: %s", str)
+		return INVALID, fmt.Errorf("unrecognized dump type: %s", str)
 	}
 }
 
-// Config for data dump
-type Config struct {
-	Dump io.WriteCloser
+// Set satisfies flag.Value
+func (d *DumpType) Set(v string) (err error) {
+	*d, err = ResolveDumpType(v)
+	return
 }
 
-// Type satisfies interfaces.Config
-func (c Config) Type() shared.DBType {
-	return shared.DUMP
-}
-
-// NewDiscardWriterCloser returns a discardWrapper wrapping io.Discard
-func NewDiscardWriterCloser() io.WriteCloser {
-	return discardWrapper{blackhole: io.Discard}
+// String satisfies flag.Value
+func (d *DumpType) String() string {
+	return strings.ToLower(string(*d))
 }
 
 // discardWrapper wraps io.Discard with io.Closer
-type discardWrapper struct {
-	blackhole io.Writer
-}
+type discardWrapper struct{ io.Writer }
 
-// Write satisfies io.Writer
-func (dw discardWrapper) Write(b []byte) (int, error) {
-	return dw.blackhole.Write(b)
-}
+var Discard = discardWrapper{io.Discard}
 
 // Close satisfies io.Closer
-func (dw discardWrapper) Close() error {
+func (discardWrapper) Close() error {
 	return nil
 }

@@ -22,8 +22,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/statediff/indexer/interfaces"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
 var _ interfaces.StateDiffIndexer = &StateDiffIndexer{}
@@ -48,9 +49,7 @@ func (sdi *StateDiffIndexer) PushIPLD(txi interfaces.Batch, ipld sdtypes.IPLD) e
 
 func (sdi *StateDiffIndexer) ReportDBMetrics(delay time.Duration, quit <-chan bool) {}
 
-func (sdi *StateDiffIndexer) LoadWatchedAddresses() ([]common.Address, error) {
-	return nil, nil
-}
+func (sdi *StateDiffIndexer) LoadWatchedAddresses() ([]common.Address, error) { return nil, nil }
 
 func (sdi *StateDiffIndexer) InsertWatchedAddresses(addresses []sdtypes.WatchAddressArg, currentBlock *big.Int) error {
 	return nil

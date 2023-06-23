@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
 )
 
 // BatchTx wraps a void with the state necessary for building the tx concurrently during trie difference iteration

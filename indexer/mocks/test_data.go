@@ -22,18 +22,18 @@ import (
 	"crypto/rand"
 	"math/big"
 
-	ipld2 "github.com/ethereum/go-ethereum/statediff/indexer/ipld"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/statediff/test_helpers"
-	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 	"github.com/ethereum/go-ethereum/trie"
+
+	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared"
+	"github.com/cerc-io/plugeth-statediff/test_helpers"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 // Test variables
@@ -150,7 +150,7 @@ var (
 		StoragePartialPath,
 		StorageValue,
 	})
-	StorageLeafNodeCID = ipld2.Keccak256ToCid(ipld2.MEthStorageTrie, crypto.Keccak256(StorageLeafNode)).String()
+	StorageLeafNodeCID = ipld.Keccak256ToCid(ipld.MEthStorageTrie, crypto.Keccak256(StorageLeafNode)).String()
 
 	nonce1           = uint64(1)
 	ContractRoot     = "0x821e2556a290c86405f8160a2d662042a431ba456b9db265c79bb837c04be5f0"
@@ -169,7 +169,7 @@ var (
 		ContractPartialPath,
 		ContractAccount,
 	})
-	ContractLeafNodeCID = ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(ContractLeafNode)).String()
+	ContractLeafNodeCID = ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(ContractLeafNode)).String()
 
 	Contract2LeafKey = test_helpers.AddressToLeafKey(ContractAddress2)
 	storage2Location = common.HexToHash("2")
@@ -195,7 +195,7 @@ var (
 		AccountPartialPath,
 		Account,
 	})
-	AccountLeafNodeCID = ipld2.Keccak256ToCid(ipld2.MEthStateTrie, crypto.Keccak256(AccountLeafNode)).String()
+	AccountLeafNodeCID = ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(AccountLeafNode)).String()
 
 	StateDiffs = []sdtypes.StateLeafNode{
 		{

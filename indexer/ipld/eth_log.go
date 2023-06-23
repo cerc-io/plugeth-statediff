@@ -1,11 +1,10 @@
 package ipld
 
 import (
-	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 )
 
 // EthLog (eth-log, codec 0x9a), represents an ethereum block header

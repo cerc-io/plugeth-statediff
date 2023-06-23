@@ -23,10 +23,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql"
-	"github.com/ethereum/go-ethereum/statediff/indexer/database/sql/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/mocks"
-	"github.com/ethereum/go-ethereum/statediff/indexer/test"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
+	"github.com/cerc-io/plugeth-statediff/indexer/test"
 )
 
 func setupPGXIndexer(t *testing.T, config postgres.Config) {
@@ -59,7 +59,7 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexHeaderIPLDs(t, db)
+		test.DoTestPublishAndIndexHeaderIPLDs(t, db)
 	})
 
 	t.Run("Publish and index transaction IPLDs in a single tx", func(t *testing.T) {
@@ -67,7 +67,7 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexTransactionIPLDs(t, db)
+		test.DoTestPublishAndIndexTransactionIPLDs(t, db)
 	})
 
 	t.Run("Publish and index log IPLDs for multiple receipt of a specific block", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexLogIPLDs(t, db)
+		test.DoTestPublishAndIndexLogIPLDs(t, db)
 	})
 
 	t.Run("Publish and index receipt IPLDs in a single tx", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexReceiptIPLDs(t, db)
+		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
 	})
 
 	t.Run("Publish and index state IPLDs in a single tx", func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexStateIPLDs(t, db)
+		test.DoTestPublishAndIndexStateIPLDs(t, db)
 	})
 
 	t.Run("Publish and index storage IPLDs in a single tx", func(t *testing.T) {
@@ -99,7 +99,7 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexStorageIPLDs(t, db)
+		test.DoTestPublishAndIndexStorageIPLDs(t, db)
 	})
 
 	t.Run("Publish and index with CopyFrom enabled.", func(t *testing.T) {
@@ -110,10 +110,10 @@ func TestPGXIndexer(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexStateIPLDs(t, db)
-		test.TestPublishAndIndexStorageIPLDs(t, db)
-		test.TestPublishAndIndexReceiptIPLDs(t, db)
-		test.TestPublishAndIndexLogIPLDs(t, db)
+		test.DoTestPublishAndIndexStateIPLDs(t, db)
+		test.DoTestPublishAndIndexStorageIPLDs(t, db)
+		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
+		test.DoTestPublishAndIndexLogIPLDs(t, db)
 	})
 }
 
@@ -132,7 +132,7 @@ func TestPGXIndexerNonCanonical(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexTransactionsNonCanonical(t, db)
+		test.DoTestPublishAndIndexTransactionsNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index receipts", func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestPGXIndexerNonCanonical(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexReceiptsNonCanonical(t, db)
+		test.DoTestPublishAndIndexReceiptsNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index logs", func(t *testing.T) {
@@ -148,7 +148,7 @@ func TestPGXIndexerNonCanonical(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexLogsNonCanonical(t, db)
+		test.DoTestPublishAndIndexLogsNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index state nodes", func(t *testing.T) {
@@ -156,7 +156,7 @@ func TestPGXIndexerNonCanonical(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexStateNonCanonical(t, db)
+		test.DoTestPublishAndIndexStateNonCanonical(t, db)
 	})
 
 	t.Run("Publish and index storage nodes", func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestPGXIndexerNonCanonical(t *testing.T) {
 		defer tearDown(t)
 		defer checkTxClosure(t, 1, 0, 1)
 
-		test.TestPublishAndIndexStorageNonCanonical(t, db)
+		test.DoTestPublishAndIndexStorageNonCanonical(t, db)
 	})
 }
 
