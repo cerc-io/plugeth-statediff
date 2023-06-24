@@ -25,13 +25,6 @@ var (
 func Initialize(ctx core.Context, pl core.PluginLoader, logger core.Logger) {
 	log.SetDefaultLogger(logger)
 
-	// lvl, err := strconv.ParseInt(ctx.String("verbosity"), 10, 8)
-	// if err != nil {
-	// 	log.Error("cannot parse verbosity", "error", err)
-	// }
-	// log.TestLogger.SetLevel(int(lvl))
-	// log.SetDefaultLogger(log.TestLogger)
-
 	pluginLoader = pl
 	gethContext = ctx
 
@@ -84,24 +77,4 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 			Public:    true,
 		},
 	}
-}
-
-// StateUpdate gives us updates about state changes made in each block.
-// We extract contract code here, since it's not exposed by plugeth's state interfaces.
-func StateUpdate(
-	blockRoot core.Hash,
-	parentRoot core.Hash,
-	destructs map[core.Hash]struct{},
-	accounts map[core.Hash][]byte,
-	storage map[core.Hash]map[core.Hash][]byte,
-	codeUpdates map[core.Hash][]byte) {
-	if blockchain == nil {
-		log.Warn("StateUpdate called before InitializeNode", "root", blockRoot)
-		return
-	}
-
-	// for hash, code := range codeUpdates {
-	// 	log.Debug("UPDATING CODE", "hash", hash)
-	// 	codeStore.Set(hash, code)
-	// }
 }

@@ -25,8 +25,6 @@ type BlockChain interface {
 	GetBlockByNumber(number uint64) *types.Block
 	GetReceiptsByHash(hash common.Hash) types.Receipts
 	GetTd(hash common.Hash, number uint64) *big.Int
-	// TODO LockTrie is never used
-	// UnlockTrie(root core.Hash)
 	StateCache() adapt.StateView
 }
 
@@ -49,8 +47,7 @@ func (b *pluginBlockChain) SubscribeChainEvent(ch chan<- core.ChainEvent) event.
 	go func() {
 		for event := range bufferChan {
 			block := utils.MustDecode[types.Block](event.Block)
-			// TODO: apparently we ignore the logs
-			// logs := utils.MustDecode[types.Log](chainEvent.Logs)
+			// Note: logs are processed with receipts while building the payload
 			ch <- core.ChainEvent{
 				Block: block,
 				Hash:  common.Hash(event.Hash),

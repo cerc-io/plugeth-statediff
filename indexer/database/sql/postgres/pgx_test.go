@@ -31,8 +31,9 @@ import (
 )
 
 var (
-	pgConfig, _ = postgres.MakeConfig(postgres.TestConfig)
-	ctx         = context.Background()
+	pgConfig, _  = postgres.TestConfig.WithEnv()
+	pgxConfig, _ = postgres.MakeConfig(pgConfig)
+	ctx          = context.Background()
 )
 
 func expectContainsSubstring(t *testing.T, full string, sub string) {
@@ -43,9 +44,9 @@ func expectContainsSubstring(t *testing.T, full string, sub string) {
 
 func TestPostgresPGX(t *testing.T) {
 	t.Run("connects to the sql", func(t *testing.T) {
-		dbPool, err := pgxpool.ConnectConfig(context.Background(), pgConfig)
+		dbPool, err := pgxpool.ConnectConfig(context.Background(), pgxConfig)
 		if err != nil {
-			t.Fatalf("failed to connect to db with connection string: %s err: %v", pgConfig.ConnString(), err)
+			t.Fatalf("failed to connect to db with connection string: %s err: %v", pgxConfig.ConnString(), err)
 		}
 		if dbPool == nil {
 			t.Fatal("DB pool is nil")
@@ -61,9 +62,9 @@ func TestPostgresPGX(t *testing.T) {
 		// sized int, so use string representation of big.Int
 		// and cast on insert
 
-		dbPool, err := pgxpool.ConnectConfig(context.Background(), pgConfig)
+		dbPool, err := pgxpool.ConnectConfig(context.Background(), pgxConfig)
 		if err != nil {
-			t.Fatalf("failed to connect to db with connection string: %s err: %v", pgConfig.ConnString(), err)
+			t.Fatalf("failed to connect to db with connection string: %s err: %v", pgxConfig.ConnString(), err)
 		}
 		defer dbPool.Close()
 
@@ -111,7 +112,7 @@ func TestPostgresPGX(t *testing.T) {
 		badHash := fmt.Sprintf("x %s", strings.Repeat("1", 100))
 		badInfo := node.Info{GenesisBlock: badHash, NetworkID: "1", ID: "x123", ClientName: "geth"}
 
-		_, err := postgres.NewPGXDriver(ctx, postgres.TestConfig, badInfo)
+		_, err := postgres.NewPGXDriver(ctx, pgConfig, badInfo)
 		if err == nil {
 			t.Fatal("Expected an error")
 		}

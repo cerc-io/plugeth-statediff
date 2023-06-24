@@ -31,7 +31,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
 	plugeth "github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/thoas/go-funk"
 
@@ -437,11 +436,6 @@ func (sds *Service) processStateDiff(currentBlock *types.Block, parentRoot commo
 		BlockHash:    currentBlock.Hash(),
 		BlockNumber:  currentBlock.Number(),
 	}, params)
-	// allow dereferencing of parent, keep current locked as it should be the next parent
-	// sds.BlockChain.UnlockTrie(parentRoot)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	stateDiffRlp, err := rlp.EncodeToBytes(&stateDiff)
 	if err != nil {
 		return nil, err
@@ -754,10 +748,6 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	if err = tx.Submit(err); err != nil {
 		return fmt.Errorf("batch transaction submission failed: %w", err)
 	}
-
-	// allow dereferencing of parent, keep current locked as it should be the next parent
-	// TODO never locked
-	// sds.BlockChain.UnlockTrie(parentRoot)
 	return nil
 }
 
@@ -796,44 +786,6 @@ func (sds *Service) UnsubscribeWriteStatus(id SubID) {
 	sds.jobStatusSubsMutex.Lock()
 	delete(sds.jobStatusSubs, id)
 	sds.jobStatusSubsMutex.Unlock()
-}
-
-// StreamCodeAndCodeHash subscription method for extracting all the codehash=>code mappings that exist in the trie at the provided height
-func (sds *Service) StreamCodeAndCodeHash(blockNumber uint64, outChan chan<- types2.CodeAndCodeHash, quitChan chan<- bool) {
-	current := sds.BlockChain.GetBlockByNumber(blockNumber)
-	log.Info("sending code and codehash", "number", blockNumber)
-	currentTrie, err := sds.BlockChain.StateCache().OpenTrie(current.Root())
-	if err != nil {
-		log.Error("error getting trie for block", "number", current.Number(), "error", err)
-		close(quitChan)
-		return
-	}
-	leafIt := trie.NewIterator(currentTrie.NodeIterator(nil))
-	go func() {
-		defer close(quitChan)
-		for leafIt.Next() {
-			select {
-			case <-sds.QuitChan:
-				return
-			default:
-			}
-			account := new(types.StateAccount)
-			if err := rlp.DecodeBytes(leafIt.Value, account); err != nil {
-				log.Error("error decoding state account", "error", err)
-				return
-			}
-			codeHash := common.BytesToHash(account.CodeHash)
-			code, err := sds.BlockChain.StateCache().ContractCode(codeHash)
-			if err != nil {
-				log.Error("error collecting contract code", "error", err)
-				return
-			}
-			outChan <- types2.CodeAndCodeHash{
-				Hash: codeHash,
-				Code: code,
-			}
-		}
-	}()
 }
 
 // WatchAddress performs one of following operations on the watched addresses in sds.writeLoopParams and the db:

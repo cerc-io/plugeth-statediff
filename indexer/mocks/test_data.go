@@ -39,8 +39,8 @@ import (
 // Test variables
 var (
 	// block data
-	TestConfig  = params.MainnetChainConfig
-	BlockNumber = TestConfig.LondonBlock
+	TestChainConfig = params.MainnetChainConfig
+	BlockNumber     = TestChainConfig.LondonBlock
 
 	// canonical block at London height
 	// includes 5 transactions: 3 Legacy + 1 EIP-2930 + 1 EIP-1559
@@ -55,7 +55,7 @@ var (
 		BaseFee:     big.NewInt(params.InitialBaseFee),
 		Coinbase:    common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476777"),
 	}
-	MockTransactions, MockReceipts, SenderAddr = createTransactionsAndReceipts(TestConfig, BlockNumber)
+	MockTransactions, MockReceipts, SenderAddr = createTransactionsAndReceipts(TestChainConfig, BlockNumber)
 	MockBlock                                  = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts, trie.NewEmpty(nil))
 	MockHeaderRlp, _                           = rlp.EncodeToBytes(MockBlock.Header())
 
@@ -63,7 +63,7 @@ var (
 	// includes 2nd and 5th transactions from the canonical block
 	MockNonCanonicalHeader            = MockHeader
 	MockNonCanonicalBlockTransactions = types.Transactions{MockTransactions[1], MockTransactions[4]}
-	MockNonCanonicalBlockReceipts     = createNonCanonicalBlockReceipts(TestConfig, BlockNumber, MockNonCanonicalBlockTransactions)
+	MockNonCanonicalBlockReceipts     = createNonCanonicalBlockReceipts(TestChainConfig, BlockNumber, MockNonCanonicalBlockTransactions)
 	MockNonCanonicalBlock             = types.NewBlock(&MockNonCanonicalHeader, MockNonCanonicalBlockTransactions, nil, MockNonCanonicalBlockReceipts, trie.NewEmpty(nil))
 	MockNonCanonicalHeaderRlp, _      = rlp.EncodeToBytes(MockNonCanonicalBlock.Header())
 
@@ -82,7 +82,7 @@ var (
 		Coinbase:    common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476777"),
 	}
 	MockNonCanonicalBlock2Transactions = types.Transactions{MockTransactions[2], MockTransactions[4]}
-	MockNonCanonicalBlock2Receipts     = createNonCanonicalBlockReceipts(TestConfig, Block2Number, MockNonCanonicalBlock2Transactions)
+	MockNonCanonicalBlock2Receipts     = createNonCanonicalBlockReceipts(TestChainConfig, Block2Number, MockNonCanonicalBlock2Transactions)
 	MockNonCanonicalBlock2             = types.NewBlock(&MockNonCanonicalHeader2, MockNonCanonicalBlock2Transactions, nil, MockNonCanonicalBlock2Receipts, trie.NewEmpty(nil))
 	MockNonCanonicalHeader2Rlp, _      = rlp.EncodeToBytes(MockNonCanonicalBlock2.Header())
 

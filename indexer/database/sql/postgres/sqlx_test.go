@@ -35,7 +35,7 @@ func TestPostgresSQLX(t *testing.T) {
 
 	t.Run("connects to the database", func(t *testing.T) {
 		var err error
-		connStr := postgres.TestConfig.DbConnectionString()
+		connStr := pgConfig.DbConnectionString()
 
 		sqlxdb, err = sqlx.Connect("postgres", connStr)
 		if err != nil {
@@ -58,7 +58,7 @@ func TestPostgresSQLX(t *testing.T) {
 		// sized int, so use string representation of big.Int
 		// and cast on insert
 
-		connStr := postgres.TestConfig.DbConnectionString()
+		connStr := pgConfig.DbConnectionString()
 		db, err := sqlx.Connect("postgres", connStr)
 		if err != nil {
 			t.Fatal(err)
@@ -109,7 +109,7 @@ func TestPostgresSQLX(t *testing.T) {
 		badHash := fmt.Sprintf("x %s", strings.Repeat("1", 100))
 		badInfo := node.Info{GenesisBlock: badHash, NetworkID: "1", ID: "x123", ClientName: "geth"}
 
-		_, err := postgres.NewSQLXDriver(ctx, postgres.TestConfig, badInfo)
+		_, err := postgres.NewSQLXDriver(ctx, pgConfig, badInfo)
 		if err == nil {
 			t.Fatal("Expected an error")
 		}

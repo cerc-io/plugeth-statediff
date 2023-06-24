@@ -41,7 +41,7 @@ func setupCSVIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(mocks.TestConfig, file.CSVTestConfig)
+	ind, err = file.NewStateDiffIndexer(mocks.TestChainConfig, file.CSVTestConfig)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()

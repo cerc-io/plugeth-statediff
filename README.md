@@ -32,8 +32,7 @@ hash.
 State leaf nodes contain information about account changes, including whether they are removed, an
 account wrapper with account details and identifiers, and an array of storage leaf nodes
 representing storage changes. The IPLD type encapsulates CID-content pairs, used for code mappings
-and trie node (both intermediate and leaf) IPLD objects. Lastly, `CodeAndCodeHash` stores
-codehash-to-code mappings.
+and trie node (both intermediate and leaf) IPLD objects.
 
 ```go
 // Payload packages the data to send to state diff subscriptions
@@ -82,12 +81,6 @@ type StorageLeafNode struct {
 type IPLD struct {
     CID     string
     Content []byte
-}
-
-// CodeAndCodeHash struct to hold codehash => code mappings
-type CodeAndCodeHash struct {
-    Hash common.Hash
-    Code []byte
 }
 ```
 
@@ -152,7 +145,7 @@ type Params struct {
     IncludeReceipts          bool
     IncludeTD                bool
     IncludeCode              bool
-    WatchedAddresses         []core.Address
+    WatchedAddresses         []common.Address
 }
 ```
 
@@ -209,8 +202,6 @@ for {
 }
 ```
 
-Additionally, the `StreamCodeAndCodeHash` subscription method streams codehash-to-code pairs at a given block to a websocket channel.
-
 #### Unary endpoints
 
 The service also exposes unary RPC endpoints for retrieving the state diff `StateObject` for a specific block height/hash.
@@ -220,7 +211,7 @@ The service also exposes unary RPC endpoints for retrieving the state diff `Stat
 StateDiffAt(ctx context.Context, blockNumber uint64, params Params) (*Payload, error)
 
 // StateDiffFor returns a state diff payload for the specific blockhash
-StateDiffFor(ctx context.Context, blockHash core.Hash, params Params) (*Payload, error)
+StateDiffFor(ctx context.Context, blockHash common.Hash, params Params) (*Payload, error)
 ```
 
 To expose this endpoint the node needs to have the HTTP server turned on (`--http`),
@@ -255,27 +246,25 @@ track this process:
 Our Postgres schemas are built around a single IPFS backing Postgres IPLD blockstore table
 (`ipld.blocks`) that conforms with
 [go-ds-sql](https://github.com/ipfs/go-ds-sql/blob/master/postgres/postgres.go).  All IPLD objects
-are stored in this table, where `key` is the blockstore-prefixed multihash key for the IPLD object
-and `data` contains the bytes for the IPLD block (in the case of all Ethereum IPLDs, this is the RLP
-byte encoding of the Ethereum object).
+are stored in this table, where `key` is the CID for the IPLD object and `data` contains the bytes
+for the IPLD block (in the case of all Ethereum IPLDs, this is the RLP byte encoding of the Ethereum
+object).
 
 The IPLD objects in this table can be traversed using an IPLD DAG interface, but since this table
-only maps multihash to raw IPLD object it is not particularly useful for searching through the data
-by looking up Ethereum objects by their constituent fields (e.g. by block number, tx
-source/recipient, state/storage trie node path). To improve the accessibility of these objects we
-create an Ethereum [advanced data
+only maps CID to raw IPLD object it is not very suitable for looking up Ethereum objects by their
+constituent fields (e.g. by tx source/recipient, state/storage trie path). To improve the
+accessibility of these objects we create an Ethereum [advanced data
 layout](https://github.com/ipld/specs#schemas-and-advanced-data-layouts) (ADL) by generating
 secondary indexes on top of the raw IPLDs in other Postgres tables.
 
 These secondary index tables fall under the `eth` schema and follow an `{objectType}_cids` naming
 convention.  These tables provide a view into individual fields of the underlying Ethereum IPLD
 objects, allowing lookups on these fields, and reference the raw IPLD objects stored in
-`ipld.blocks` by foreign keys to their multihash keys.  Additionally, these tables maintain the
-hash-linked nature of Ethereum objects to one another. E.g. a storage trie node entry in the
-`storage_cids` table contains a `state_id` foreign key which references the `id` for the
-`state_cids` entry that contains the state leaf node for the contract that storage node belongs to,
-and in turn that `state_cids` entry contains a `header_id` foreign key which references the `id` of
-the `header_cids` entry that contains the header for the block these state and storage nodes were
+`ipld.blocks` by CID.  Additionally, these tables maintain the hash-linked nature of Ethereum
+objects to one another, e.g. a storage trie node entry in the `storage_cids` table contains a
+`state_leaf_key` field referencing the `state_cids` entry for the state trie node of its owning
+contract, and that `state_cids` entry in turn contains a `header_id` field referencing the
+`block_hash` of the `header_cids` entry for the block in which these state and storage nodes were
 updated (diffed).
 
 ### Optimization

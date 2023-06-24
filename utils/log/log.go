@@ -1,7 +1,6 @@
 package log
 
 import (
-	// geth_log "github.com/ethereum/go-ethereum/log"
 	"github.com/inconshreveable/log15"
 	"github.com/openrelayxyz/plugeth-utils/core"
 )
@@ -28,10 +27,6 @@ func Crit(m string, a ...interface{})  { DefaultLogger.Crit(m, a...) }
 func Error(m string, a ...interface{}) { DefaultLogger.Error(m, a...) }
 
 func SetDefaultLogger(l core.Logger) {
-	// gethlogger, ok := l.(geth_log.Logger)
-	// if !ok {
-	// 	panic("not a geth Logger")
-	// }
 	DefaultLogger = l
 }
 

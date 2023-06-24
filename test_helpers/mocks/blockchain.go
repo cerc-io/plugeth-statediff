@@ -149,8 +149,6 @@ func (bc *BlockChain) SetTd(hash common.Hash, blockNum uint64, td *big.Int) {
 	bc.TDByNum[blockNum] = td
 }
 
-// func (bc *BlockChain) UnlockTrie(root core.Hash) {}
-
 // TODO
 func (bc *BlockChain) StateCache() adapt.StateView {
 	return nil

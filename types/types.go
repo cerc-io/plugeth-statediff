@@ -67,12 +67,6 @@ type IPLD struct {
 	Content []byte
 }
 
-// CodeAndCodeHash struct to hold codehash => code mappings
-type CodeAndCodeHash struct {
-	Hash common.Hash
-	Code []byte
-}
-
 type StateNodeSink func(node StateLeafNode) error
 type StorageNodeSink func(node StorageLeafNode) error
 type IPLDSink func(IPLD) error

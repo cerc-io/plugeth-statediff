@@ -31,20 +31,17 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	geth_log "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 
 	statediff "github.com/cerc-io/plugeth-statediff"
+	"github.com/cerc-io/plugeth-statediff/test_helpers"
 	"github.com/cerc-io/plugeth-statediff/test_helpers/mocks"
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
-	// "github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 func init() {
-	// The geth sync logs are noisy, silence them
-	geth_log.Root().SetHandler(geth_log.DiscardHandler())
-	// log.TestLogger.SetLevel(2)
+	test_helpers.SilenceLogs()
 }
 
 func TestServiceLoop(t *testing.T) {

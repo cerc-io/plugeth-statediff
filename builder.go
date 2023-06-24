@@ -140,7 +140,7 @@ func (sdb *StateDiffBuilder) WriteStateDiffObject(args Args, params Params, outp
 
 func (sdb *StateDiffBuilder) BuildStateDiff(iterPairs []IterPair, params Params,
 	output sdtypes.StateNodeSink, ipldOutput sdtypes.IPLDSink, logger log.Logger, prefixPath []byte) error {
-	logger.Debug("statediff BEGIN BuildStateDiff")
+	logger.Trace("statediff BEGIN BuildStateDiff")
 	defer metrics.ReportAndUpdateDuration("statediff END BuildStateDiff", time.Now(), logger, metrics.IndexerMetrics.BuildStateDiffTimer)
 	// collect a slice of all the nodes that were touched and exist at B (B-A)
 	// a map of their leafkey to all the accounts that were touched and exist at B
@@ -195,7 +195,7 @@ func (sdb *StateDiffBuilder) BuildStateDiff(iterPairs []IterPair, params Params,
 // and a slice of the paths for all of the nodes included in both
 func (sdb *StateDiffBuilder) createdAndUpdatedState(a, b trie.NodeIterator,
 	watchedAddressesLeafPaths [][]byte, output sdtypes.IPLDSink, logger log.Logger, prefixPath []byte) (sdtypes.AccountMap, error) {
-	logger.Debug("statediff BEGIN createdAndUpdatedState")
+	logger.Trace("statediff BEGIN createdAndUpdatedState")
 	defer metrics.ReportAndUpdateDuration("statediff END createdAndUpdatedState", time.Now(), logger, metrics.IndexerMetrics.CreatedAndUpdatedStateTimer)
 	diffAccountsAtB := make(sdtypes.AccountMap)
 
@@ -280,7 +280,7 @@ func (sdb *StateDiffBuilder) processStateValueNode(it trie.NodeIterator, parentB
 // and a mapping of their leafkeys to all the accounts that exist in a different state at A than B
 func (sdb *StateDiffBuilder) deletedOrUpdatedState(a, b trie.NodeIterator, diffAccountsAtB sdtypes.AccountMap,
 	watchedAddressesLeafPaths [][]byte, output sdtypes.StateNodeSink, logger log.Logger, prefixPath []byte) (sdtypes.AccountMap, error) {
-	logger.Debug("statediff BEGIN deletedOrUpdatedState")
+	logger.Trace("statediff BEGIN deletedOrUpdatedState")
 	defer metrics.ReportAndUpdateDuration("statediff END deletedOrUpdatedState", time.Now(), logger, metrics.IndexerMetrics.DeletedOrUpdatedStateTimer)
 	diffAccountAtA := make(sdtypes.AccountMap)
 
@@ -339,7 +339,7 @@ func (sdb *StateDiffBuilder) deletedOrUpdatedState(a, b trie.NodeIterator, diffA
 // those account maps to remove the accounts which were updated
 func (sdb *StateDiffBuilder) buildAccountUpdates(creations, deletions sdtypes.AccountMap, updatedKeys []string,
 	output sdtypes.StateNodeSink, ipldOutput sdtypes.IPLDSink, logger log.Logger) error {
-	logger.Debug("statediff BEGIN buildAccountUpdates",
+	logger.Trace("statediff BEGIN buildAccountUpdates",
 		"creations", len(creations), "deletions", len(deletions), "updated", len(updatedKeys))
 	defer metrics.ReportAndUpdateDuration("statediff END buildAccountUpdates ",
 		time.Now(), logger, metrics.IndexerMetrics.BuildAccountUpdatesTimer)
@@ -375,7 +375,7 @@ func (sdb *StateDiffBuilder) buildAccountUpdates(creations, deletions sdtypes.Ac
 // it also returns the code and codehash for created contract accounts
 func (sdb *StateDiffBuilder) buildAccountCreations(accounts sdtypes.AccountMap, output sdtypes.StateNodeSink,
 	ipldOutput sdtypes.IPLDSink, logger log.Logger) error {
-	logger.Debug("statediff BEGIN buildAccountCreations")
+	logger.Trace("statediff BEGIN buildAccountCreations")
 	defer metrics.ReportAndUpdateDuration("statediff END buildAccountCreations",
 		time.Now(), logger, metrics.IndexerMetrics.BuildAccountCreationsTimer)
 	for _, val := range accounts {

@@ -29,17 +29,27 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/test"
 )
 
+var defaultPgConfig postgres.Config
+
+func init() {
+	var err error
+	defaultPgConfig, err = postgres.TestConfig.WithEnv()
+	if err != nil {
+		panic(err)
+	}
+}
+
 func setupPGXIndexer(t *testing.T, config postgres.Config) {
 	db, err = postgres.SetupPGXDB(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ind, err = sql.NewStateDiffIndexer(context.Background(), mocks.TestConfig, db)
+	ind, err = sql.NewStateDiffIndexer(context.Background(), mocks.TestChainConfig, db)
 	require.NoError(t, err)
 }
 
 func setupPGX(t *testing.T) {
-	setupPGXWithConfig(t, postgres.TestConfig)
+	setupPGXWithConfig(t, defaultPgConfig)
 }
 
 func setupPGXWithConfig(t *testing.T, config postgres.Config) {
@@ -48,7 +58,7 @@ func setupPGXWithConfig(t *testing.T, config postgres.Config) {
 }
 
 func setupPGXNonCanonical(t *testing.T) {
-	setupPGXIndexer(t, postgres.TestConfig)
+	setupPGXIndexer(t, defaultPgConfig)
 	test.SetupTestDataNonCanonical(t, ind)
 }
 
@@ -103,7 +113,7 @@ func TestPGXIndexer(t *testing.T) {
 	})
 
 	t.Run("Publish and index with CopyFrom enabled.", func(t *testing.T) {
-		config := postgres.TestConfig
+		config := defaultPgConfig
 		config.CopyFrom = true
 
 		setupPGXWithConfig(t, config)
@@ -169,7 +179,7 @@ func TestPGXIndexerNonCanonical(t *testing.T) {
 }
 
 func TestPGXWatchAddressMethods(t *testing.T) {
-	setupPGXIndexer(t, postgres.TestConfig)
+	setupPGXIndexer(t, defaultPgConfig)
 	defer tearDown(t)
 	defer checkTxClosure(t, 1, 0, 1)
 

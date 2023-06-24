@@ -29,7 +29,6 @@ import (
 const APIName = "statediff"
 
 // APIVersion is the version of the state diffing service API
-// TODO: match package version?
 const APIVersion = "0.0.1"
 
 // PublicStateDiffAPI provides an RPC subscription interface
@@ -86,32 +85,6 @@ func (api *PublicAPI) StateDiffAt(ctx context.Context, blockNumber uint64, param
 // StateDiffFor returns a state diff payload for the specific blockhash
 func (api *PublicAPI) StateDiffFor(ctx context.Context, blockHash common.Hash, params Params) (*Payload, error) {
 	return api.sds.StateDiffFor(blockHash, params)
-}
-
-// StreamCodeAndCodeHash writes all of the codehash=>code pairs at a given block to a websocket channel.
-func (api *PublicAPI) StreamCodeAndCodeHash(ctx context.Context, blockNumber uint64) (<-chan types.CodeAndCodeHash, error) {
-	payloadChan := make(chan types.CodeAndCodeHash, chainEventChanSize)
-	clientChan := make(chan types.CodeAndCodeHash, chainEventChanSize)
-	quitChan := make(chan bool, 1)
-	api.sds.StreamCodeAndCodeHash(blockNumber, payloadChan, quitChan)
-
-	go func() {
-		defer close(clientChan)
-		defer close(payloadChan)
-
-		for {
-			select {
-			case payload := <-payloadChan:
-				clientChan <- payload
-			case <-ctx.Done():
-				return
-			case <-quitChan:
-				return
-			}
-		}
-	}()
-
-	return clientChan, nil
 }
 
 // WriteStateDiffAt writes a state diff object directly to DB at the specific blockheight

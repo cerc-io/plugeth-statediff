@@ -41,6 +41,10 @@ import (
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
+func init() {
+	test_helpers.SilenceLogs()
+}
+
 var (
 	db                                                         ethdb.Database
 	genesisBlock, block0, block1, block2, block3               *types.Block

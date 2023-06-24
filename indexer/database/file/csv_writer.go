@@ -130,7 +130,7 @@ func (tx fileWriters) flush() error {
 
 func NewCSVWriter(path string, watchedAddressesFilePath string) (*CSVWriter, error) {
 	if err := os.MkdirAll(path, 0777); err != nil {
-		return nil, fmt.Errorf("unable to make MkdirAll for path: %s err: %s", path, err)
+		return nil, fmt.Errorf("unable to create directory '%s': %w", path, err)
 	}
 
 	writers, err := makeFileWriters(path, Tables)
@@ -383,7 +383,7 @@ func loadWatchedAddressesRows(filePath string) ([][]string, error) {
 			return [][]string{}, nil
 		}
 
-		return nil, fmt.Errorf("error opening watched addresses file: %v", err)
+		return nil, fmt.Errorf("error opening watched addresses file: %w", err)
 	}
 
 	defer file.Close()
@@ -399,7 +399,7 @@ func dumpWatchedAddressesRows(watchedAddressesWriter fileWriter, filteredRows []
 
 	file, err := os.Create(file.Name())
 	if err != nil {
-		return fmt.Errorf("error creating watched addresses file: %v", err)
+		return fmt.Errorf("error creating watched addresses file: %w", err)
 	}
 
 	watchedAddressesWriter.Writer = csv.NewWriter(file)

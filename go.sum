@@ -1,6 +1,6 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-git.vdb.to/cerc-io/plugeth v0.0.0-20230622162124-0ed9eba1decb h1:p3R953gnt/kxmJPbRRH09l3UDGwarFADxjJx4Y9SQrY=
-git.vdb.to/cerc-io/plugeth v0.0.0-20230622162124-0ed9eba1decb/go.mod h1:odpOaIpK01aVThIoAuw9YryLBJeHYOsDn9Mxm4LhB5s=
+git.vdb.to/cerc-io/plugeth v0.0.0-20230629081247-feb6ccc72b3f h1:QGxQXUa53S1Ci+gp17zjw5TI62q4fyZ/PTvHQ72FxZw=
+git.vdb.to/cerc-io/plugeth v0.0.0-20230629081247-feb6ccc72b3f/go.mod h1:odpOaIpK01aVThIoAuw9YryLBJeHYOsDn9Mxm4LhB5s=
 git.vdb.to/cerc-io/plugeth-utils v0.0.0-20230622072028-1d3da8ce80ee h1:DJ1bR/2k7PopUtchEoTw5QHV1DHb9p0ubcb3yKJc10I=
 git.vdb.to/cerc-io/plugeth-utils v0.0.0-20230622072028-1d3da8ce80ee/go.mod h1:p5Jc8deG2yxXI8DzmrH3kHNEwlQqcOQS0pmGulsqg+M=
 github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
