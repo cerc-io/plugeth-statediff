@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
@@ -32,6 +33,14 @@ var _ interfaces.Batch = &batch{}
 
 // StateDiffIndexer is a mock state diff indexer
 type StateDiffIndexer struct{}
+
+func (sdi *StateDiffIndexer) DetectGaps(beginBlock uint64, endBlock uint64) ([]*interfaces.BlockGap, error) {
+	return nil, nil
+}
+
+func (sdi *StateDiffIndexer) CurrentBlock() (*models.HeaderModel, error) {
+	return nil, nil
+}
 
 type batch struct{}
 

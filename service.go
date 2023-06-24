@@ -18,9 +18,11 @@ package statediff
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -80,6 +82,9 @@ type Service struct {
 	enableWriteLoop bool
 	// Parameters to use in the service write loop, if enabled
 	writeLoopParams ParamsWithMutex
+	// Settings to use for backfilling state diffs (plugging gaps when tracking head)
+	backfillMaxHeadGap      uint64
+	backfillCheckPastBlocks uint64
 	// Size of the worker pool
 	numWorkers uint
 	// Number of retry for aborted transactions due to deadlock.
@@ -157,22 +162,24 @@ func NewService(cfg Config, blockChain BlockChain, backend plugeth.Backend, inde
 
 	quitCh := make(chan bool)
 	sds := &Service{
-		BlockChain:        blockChain,
-		Builder:           NewBuilder(blockChain.StateCache()),
-		QuitChan:          quitCh,
-		Subscriptions:     make(map[common.Hash]map[SubID]Subscription),
-		SubscriptionTypes: make(map[common.Hash]Params),
-		BlockCache:        NewBlockCache(workers),
-		BackendAPI:        backend,
-		ShouldWaitForSync: cfg.WaitForSync,
-		indexer:           indexer,
-		enableWriteLoop:   cfg.EnableWriteLoop,
-		numWorkers:        workers,
-		maxRetry:          defaultRetryLimit,
-		jobStatusSubs:     map[SubID]jobStatusSubscription{},
-		currentJobs:       map[uint64]JobID{},
-		currentBlocks:     map[string]bool{},
-		writeLoopParams:   ParamsWithMutex{Params: defaultWriteLoopParams},
+		BlockChain:              blockChain,
+		Builder:                 NewBuilder(blockChain.StateCache()),
+		QuitChan:                quitCh,
+		Subscriptions:           make(map[common.Hash]map[SubID]Subscription),
+		SubscriptionTypes:       make(map[common.Hash]Params),
+		BlockCache:              NewBlockCache(workers),
+		BackendAPI:              backend,
+		ShouldWaitForSync:       cfg.WaitForSync,
+		indexer:                 indexer,
+		enableWriteLoop:         cfg.EnableWriteLoop,
+		backfillMaxHeadGap:      cfg.BackfillMaxHeadGap,
+		backfillCheckPastBlocks: cfg.BackfillCheckPastBlocks,
+		numWorkers:              workers,
+		maxRetry:                defaultRetryLimit,
+		jobStatusSubs:           map[SubID]jobStatusSubscription{},
+		currentJobs:             map[uint64]JobID{},
+		currentBlocks:           map[string]bool{},
+		writeLoopParams:         ParamsWithMutex{Params: defaultWriteLoopParams},
 	}
 
 	if indexer != nil {
@@ -555,6 +562,8 @@ func (sds *Service) Start() error {
 	go sds.PublishLoop(chainEventCh)
 
 	if sds.enableWriteLoop {
+		log.Info("Starting statediff DB backfill", "params", sds.writeLoopParams.Params)
+		go sds.Backfill()
 		log.Debug("Starting statediff DB write loop", "params", sds.writeLoopParams.Params)
 		chainEventCh := make(chan core.ChainEvent, chainEventChanSize)
 		go sds.WriteLoop(chainEventCh)
@@ -915,4 +924,150 @@ func MapWatchAddressArgsToAddresses(args []types2.WatchAddressArg) ([]common.Add
 	}
 
 	return addresses, nil
+}
+
+// Backfill is executed on startup to make sure there are no gaps in the recent past when tracking head.
+func (sds *Service) Backfill() {
+	chainBlock := sds.BlockChain.CurrentBlock()
+	if nil == chainBlock {
+		log.Info("Backfill: No previous chain block, nothing to backfill.")
+		return
+	}
+
+	chainBlockNumber := chainBlock.Number.Uint64()
+	if chainBlockNumber == 0 {
+		log.Info("Backfill: At start of chain, nothing to backfill.")
+		return
+	}
+
+	indexerBlock, err := sds.indexer.CurrentBlock()
+	if nil == indexerBlock {
+		log.Info("Backfill: No previous indexer block, nothing to backfill.")
+		return
+	}
+	if nil != err {
+		log.Error("Backfill error", err)
+		return
+	}
+
+	indexerBlockNumber, err := strconv.ParseUint(indexerBlock.BlockNumber, 10, 64)
+	if nil != err {
+		log.Error("Backfill error", err)
+		return
+	}
+
+	headGap := chainBlockNumber - indexerBlockNumber
+	log.Info(
+		"Backfill: initial positions",
+		"chain", chainBlockNumber,
+		"indexer", indexerBlockNumber,
+		"headGap", headGap,
+	)
+
+	if sds.backfillMaxHeadGap > 0 && headGap > 0 {
+		if headGap < sds.backfillMaxHeadGap {
+			sds.backfillHeadGap(indexerBlockNumber, chainBlockNumber)
+			log.Info("Backfill: all workers done filling headGap.")
+		} else {
+			log.Error("Backfill: headGap too large to fill.")
+		}
+	}
+
+	if sds.backfillCheckPastBlocks > 0 {
+		var gapCheckBeginNumber uint64 = 0
+		if indexerBlockNumber > sds.backfillCheckPastBlocks {
+			gapCheckBeginNumber = indexerBlockNumber - sds.backfillCheckPastBlocks
+		}
+		blockGaps, err := sds.indexer.DetectGaps(gapCheckBeginNumber, chainBlockNumber)
+		if nil != err {
+			log.Error("Backfill error", err)
+			return
+		}
+
+		if nil != blockGaps && len(blockGaps) > 0 {
+			gapsMsg, _ := json.Marshal(blockGaps)
+			log.Info("Backfill: detected gaps in range", "begin", gapCheckBeginNumber, "end", chainBlockNumber, "gaps", string(gapsMsg))
+			sds.backfillDetectedGaps(blockGaps)
+			log.Info("Backfill: done processing detected gaps in range", "begin", gapCheckBeginNumber, "end", chainBlockNumber, "gaps", string(gapsMsg))
+		} else {
+			log.Info("Backfill: no gaps detected in range", "begin", gapCheckBeginNumber, "end", chainBlockNumber)
+		}
+	}
+}
+
+// backfillHeadGap fills in any gap between the statediff position and the chain position at startup.
+// A gap can be created in this way if there is some problem in statediffing (eg, DB connectivity is lost,
+// while the chain keeps syncing), if the process is terminated with a statediff in-flight, etc.
+func (sds *Service) backfillHeadGap(indexerBlockNumber uint64, chainBlockNumber uint64) {
+	var ch = make(chan uint64)
+	var wg sync.WaitGroup
+	for i := uint(0); i < sds.numWorkers; i++ {
+		wg.Add(1)
+		go func(w uint) {
+			defer wg.Done()
+			for {
+				select {
+				case num, ok := <-ch:
+					if !ok {
+						log.Info("Backfill: headGap done", "worker", w)
+						return
+					}
+					log.Info("Backfill: backfilling head gap", "block", num, "worker", w)
+					err := sds.writeStateDiffAt(num, sds.writeLoopParams.Params)
+					if err != nil {
+						log.Error("Backfill error", err)
+					}
+				case <-sds.QuitChan:
+					log.Info("Backfill: quitting before finish", "worker", w)
+					return
+				}
+			}
+		}(i)
+	}
+
+	for bn := indexerBlockNumber + 1; bn <= chainBlockNumber; bn++ {
+		ch <- bn
+	}
+	close(ch)
+	wg.Wait()
+}
+
+// backfillDetectedGaps fills gaps which have occurred in the recent past.  These gaps can happen because of
+// transient errors, such as DB errors that are later corrected (so head statediffing continues, but with a hole)
+// a missed ChainEvent (happens sometimes when debugging), or if the process is terminated when an earlier block
+// is still in-flight, but a later block was already written.
+func (sds *Service) backfillDetectedGaps(blockGaps []*interfaces.BlockGap) {
+	var ch = make(chan uint64)
+	var wg sync.WaitGroup
+	for i := uint(0); i < sds.numWorkers; i++ {
+		wg.Add(1)
+		go func(w uint) {
+			defer wg.Done()
+			for {
+				select {
+				case num, ok := <-ch:
+					if !ok {
+						log.Info("Backfill: detected gap fill done", "worker", w)
+						return
+					}
+					log.Info("Backfill: backfilling detected gap", "block", num, "worker", w)
+					err := sds.writeStateDiffAt(num, sds.writeLoopParams.Params)
+					if err != nil {
+						log.Error("Backfill error: ", err)
+					}
+				case <-sds.QuitChan:
+					log.Info("Backfill: quitting before finish", "worker", w)
+					return
+				}
+			}
+		}(i)
+	}
+
+	for _, gap := range blockGaps {
+		for num := gap.FirstMissing; num <= gap.LastMissing; num++ {
+			ch <- num
+		}
+	}
+	close(ch)
+	wg.Wait()
 }

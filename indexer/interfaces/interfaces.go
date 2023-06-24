@@ -20,14 +20,18 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/models"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // StateDiffIndexer interface required to index statediff data
 type StateDiffIndexer interface {
+	DetectGaps(beginBlock uint64, endBlock uint64) ([]*BlockGap, error)
+	CurrentBlock() (*models.HeaderModel, error)
 	HasBlock(hash common.Hash, number uint64) (bool, error)
 	PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (Batch, error)
 	PushStateNode(tx Batch, stateNode sdtypes.StateLeafNode, headerID string) error
@@ -52,4 +56,10 @@ type Batch interface {
 // Config used to configure different underlying implementations
 type Config interface {
 	Type() shared.DBType
+}
+
+// Used to represent a gap in statediffed blocks
+type BlockGap struct {
+	FirstMissing uint64 `json:"firstMissing"`
+	LastMissing  uint64 `json:"lastMissing"`
 }

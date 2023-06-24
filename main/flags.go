@@ -52,6 +52,14 @@ func init() {
 		"statediff.waitforsync", false,
 		"Should the statediff service wait for geth to catch up to the head of the chain?",
 	)
+	Flags.Uint64Var(&config.BackfillCheckPastBlocks,
+		"statediff.backfillcheckpastblocks", 7200,
+		"Number of blocks behind the startup statediff position to check (and fill) for gaps when head tracking",
+	)
+	Flags.Uint64Var(&config.BackfillMaxHeadGap,
+		"statediff.backfillmaxheadgap", 7200,
+		"Maximum gap between the startup statediff and startup head positions that can be backfilled",
+	)
 
 	Flags.Var(&dbType,
 		"statediff.db.type",
