@@ -1,0 +1,89 @@
+name: Test
+
+on:
+  pull_request:
+    branches: '*'
+  push:
+    branches:
+      - main
+      - ci-test
+
+# Needed until we can incorporate docker startup into the executor container
+env:
+  DOCKER_HOST: unix:///var/run/dind.sock
+
+jobs:
+  unit-tests:
+    name: "Run unit tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+          check-latest: true
+      - name: "Run dockerd"
+        run: |
+          dockerd -H $DOCKER_HOST --userland-proxy=false &
+          sleep 5
+      - name: "Run DB container"
+        run: |
+          docker compose -f test/compose.yml up --wait
+      - name: "Set up Gitea access token"
+        env:
+          TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
+        run: |
+          git config --global url."https://$TOKEN:@git.vdb.to/".insteadOf https://git.vdb.to/
+      - name: "Run tests"
+        run: go test -v ./...
+
+  integration-tests:
+    name: "Run integration tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: ./plugeth-statediff
+        # TODO: replace with release
+      - uses: actions/checkout@v3
+        with:
+          repository: cerc-io/plugeth
+          ref: statediff-wip
+          path: ./plugeth
+      - name: "Run dockerd"
+        run: dockerd -H $DOCKER_HOST --userland-proxy=false &
+        # These images need access tokens configured
+      - name: "Build docker image"
+        env:
+          TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
+        run: |
+          [[ -n "$TOKEN" ]]
+          docker build ./plugeth-statediff -t cerc/plugeth-statediff:local \
+            --build-arg GIT_VDBTO_TOKEN="$TOKEN"
+          docker build ./plugeth -t cerc/plugeth:local \
+            --build-arg GIT_VDBTO_TOKEN="$TOKEN"
+
+      - name: "Install stack-orchestrator"
+        uses: actions/checkout@v3
+        with:
+          repository: roysc/stack-orchestrator
+          ref: plugeth-testing
+          path: ./stack-orchestrator
+      - run: |
+          apt-get update && apt-get install -y python3-pip
+          pip install ./stack-orchestrator
+      - name: "Run testnet stack"
+        working-directory: ./plugeth-statediff
+        run: ./scripts/integration-setup.sh
+      - name: "Clone system-tests"
+        uses: actions/checkout@v3
+        with:
+          repository: cerc-io/system-tests
+          ref: main
+          path: ./system-tests
+      - name: "Run tests"
+        working-directory: ./system-tests
+        run: |
+          pip install pytest
+          pip install -r requirements.txt
+          pytest -v -k test_basic_db
