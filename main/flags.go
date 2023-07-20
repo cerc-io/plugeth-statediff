@@ -56,9 +56,9 @@ func init() {
 		"statediff.backfillcheckpastblocks", 7200,
 		"Number of blocks behind the startup statediff position to check (and fill) for gaps when head tracking",
 	)
-	Flags.Uint64Var(&config.BackfillMaxHeadGap,
-		"statediff.backfillmaxheadgap", 7200,
-		"Maximum gap between the startup statediff and startup head positions that can be backfilled",
+	Flags.Uint64Var(&config.BackfillMaxDepth,
+		"statediff.backfillmaxdepth", 7200,
+		"When statediffing head, the maximum number of missing parents that can be backfilled",
 	)
 
 	Flags.Var(&dbType,
