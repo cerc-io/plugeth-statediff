@@ -90,9 +90,11 @@ type ParamsWithMutex struct {
 // CopyParams returns a defensive copy of the Params
 func (p *ParamsWithMutex) CopyParams() Params {
 	p.RLock()
-	defer p.RUnlock()
+	copy := p.Params.Copy()
+	p.RUnlock()
 
-	return p.Params.Copy()
+	copy.ComputeWatchedAddressesLeafPaths()
+	return copy
 }
 
 // Args bundles the arguments for the state diff builder
