@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: cerc-io/plugeth
-          ref: statediff-wip
+          ref: statediff
           path: ./plugeth
       - name: "Run dockerd"
         run: dockerd -H $DOCKER_HOST --userland-proxy=false &
@@ -66,21 +66,22 @@ jobs:
       - name: "Install stack-orchestrator"
         uses: actions/checkout@v3
         with:
-          repository: roysc/stack-orchestrator
-          ref: plugeth-testing
+          repository: cerc-io/stack-orchestrator
+          ref: v1.1.0-e856616-202308032031
           path: ./stack-orchestrator
       - run: |
           apt-get update && apt-get install -y python3-pip
           pip install ./stack-orchestrator
-      - name: "Run testnet stack"
-        working-directory: ./plugeth-statediff
-        run: ./scripts/integration-setup.sh
       - name: "Clone system-tests"
         uses: actions/checkout@v3
         with:
           repository: cerc-io/system-tests
-          ref: main
+          ref: roy/plugeth-fixes
           path: ./system-tests
+          token: ${{ secrets.CICD_REPO_TOKEN }}
+      - name: "Run testnet stack"
+        working-directory: ./plugeth-statediff
+        run: ./scripts/integration-setup.sh
       - name: "Run tests"
         working-directory: ./system-tests
         run: |

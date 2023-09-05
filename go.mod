@@ -122,6 +122,6 @@ require (
 )
 
 replace (
-	github.com/ethereum/go-ethereum => git.vdb.to/cerc-io/plugeth v0.0.0-20230710223804-34971d65a36a
+	github.com/ethereum/go-ethereum => git.vdb.to/cerc-io/plugeth v0.0.0-20230808125822-691dc334fab1
 	github.com/openrelayxyz/plugeth-utils => git.vdb.to/cerc-io/plugeth-utils v0.0.0-20230706160122-cd41de354c46
 )
