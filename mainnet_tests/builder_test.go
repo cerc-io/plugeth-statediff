@@ -17,13 +17,10 @@
 package statediff_test
 
 import (
-	"bytes"
-	"io"
-	"log"
 	"math/big"
-	"os"
 	"testing"
 
+	"github.com/cerc-io/eth-testing/chaindata/mainnet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
@@ -35,23 +32,21 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	statediff "github.com/cerc-io/plugeth-statediff"
-	"github.com/cerc-io/plugeth-statediff/adapt"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 	"github.com/cerc-io/plugeth-statediff/test_helpers"
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
 func init() {
-	test_helpers.SilenceLogs()
+	test_helpers.QuietLogs()
 }
 
 var (
 	db                                                         ethdb.Database
 	genesisBlock, block0, block1, block2, block3               *types.Block
-	block1CoinbaseAddr, block2CoinbaseAddr, block3CoinbaseAddr common.Address
 	block1CoinbaseHash, block2CoinbaseHash, block3CoinbaseHash common.Hash
 	builder                                                    statediff.Builder
-	emptyStorage                                               = make([]sdtypes.StorageLeafNode, 0)
+	emptyStorage                                               []sdtypes.StorageLeafNode
 
 	// block 1 data
 	block1CoinbaseAccount = &types.StateAccount{
@@ -426,50 +421,19 @@ var (
 func init() {
 	db = rawdb.NewMemoryDatabase()
 	genesisBlock = core.DefaultGenesisBlock().MustCommit(db)
-	genBy, err := rlp.EncodeToBytes(genesisBlock)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var block0RLP []byte
-	block0, block0RLP, err = loadBlockFromRLPFile("./block0_rlp")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !bytes.Equal(genBy, block0RLP) {
-		log.Fatal("mainnet genesis blocks do not match")
-	}
-	block1, _, err = loadBlockFromRLPFile("./block1_rlp")
-	if err != nil {
-		log.Fatal(err)
-	}
-	block1CoinbaseAddr = block1.Coinbase()
-	block1CoinbaseHash = crypto.Keccak256Hash(block1CoinbaseAddr.Bytes())
-	block2, _, err = loadBlockFromRLPFile("./block2_rlp")
-	if err != nil {
-		log.Fatal(err)
-	}
-	block2CoinbaseAddr = block2.Coinbase()
-	block2CoinbaseHash = crypto.Keccak256Hash(block2CoinbaseAddr.Bytes()) // 0x08d4679cbcf198c1741a6f4e4473845659a30caa8b26f8d37a0be2e2bc0d8892
-	block3, _, err = loadBlockFromRLPFile("./block3_rlp")
-	if err != nil {
-		log.Fatal(err)
-	}
-	block3CoinbaseAddr = block3.Coinbase()
-	block3CoinbaseHash = crypto.Keccak256Hash(block3CoinbaseAddr.Bytes())
-}
 
-func loadBlockFromRLPFile(filename string) (*types.Block, []byte, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-	blockRLP, err := io.ReadAll(f)
-	if err != nil {
-		return nil, nil, err
-	}
-	block := new(types.Block)
-	return block, blockRLP, rlp.DecodeBytes(blockRLP, block)
+	blocks := mainnet.GetBlocks()
+	block0 = blocks[0]
+	block1 = blocks[1]
+	block2 = blocks[2]
+	block3 = blocks[3]
+
+	// 0x4be8251692195afc818c92b485fcb8a4691af89cbe5a2ab557b83a4261be2a9a
+	block1CoinbaseHash = crypto.Keccak256Hash(block1.Coinbase().Bytes())
+	// 0x08d4679cbcf198c1741a6f4e4473845659a30caa8b26f8d37a0be2e2bc0d8892
+	block2CoinbaseHash = crypto.Keccak256Hash(block2.Coinbase().Bytes())
+	// 0x6efa174f00e64521a535f35e67c1aa241951c791639b2f3d060f49c5d9fa8b9e
+	block3CoinbaseHash = crypto.Keccak256Hash(block3.Coinbase().Bytes())
 }
 
 func TestBuilderOnMainnetBlocks(t *testing.T) {
@@ -659,7 +623,7 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 	}
 
 	test_helpers.RunBuilderTests(t,
-		statediff.NewBuilder(adapt.GethStateView(chain.StateCache())),
+		chain.StateCache(),
 		tests, params, test_helpers.CheckedRoots{
 			block1: block1RootBranchNode,
 			block2: block2RootBranchNode,

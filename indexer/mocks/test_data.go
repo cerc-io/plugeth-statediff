@@ -227,7 +227,7 @@ var (
 				CID:     AccountLeafNodeCID,
 			},
 			Removed:     false,
-			StorageDiff: []sdtypes.StorageLeafNode{},
+			StorageDiff: nil,
 		},
 		{
 			AccountWrapper: sdtypes.AccountWrapper{
@@ -236,7 +236,7 @@ var (
 				CID:     shared.RemovedNodeStateCID,
 			},
 			Removed:     true,
-			StorageDiff: []sdtypes.StorageLeafNode{},
+			StorageDiff: nil,
 		},
 		{
 			AccountWrapper: sdtypes.AccountWrapper{

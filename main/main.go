@@ -16,19 +16,14 @@ import (
 )
 
 var (
-	pluginLoader core.PluginLoader
-	gethContext  core.Context
-	service      *statediff.Service
-	blockchain   statediff.BlockChain
+	gethContext core.Context
+	service     *statediff.Service
+	blockchain  statediff.BlockChain
 )
 
 func Initialize(ctx core.Context, pl core.PluginLoader, logger core.Logger) {
 	log.SetDefaultLogger(logger)
-
-	pluginLoader = pl
 	gethContext = ctx
-
-	log.Debug("Initialized statediff plugin")
 }
 
 func InitializeNode(stack core.Node, b core.Backend) {
@@ -58,7 +53,7 @@ func InitializeNode(stack core.Node, b core.Backend) {
 			log.Error("failed to construct indexer", "error", err)
 		}
 	}
-	service, err := statediff.NewService(serviceConfig, blockchain, backend, indexer)
+	service, err = statediff.NewService(serviceConfig, blockchain, backend, indexer)
 	if err != nil {
 		log.Error("failed to construct service", "error", err)
 	}
@@ -66,6 +61,8 @@ func InitializeNode(stack core.Node, b core.Backend) {
 		log.Error("failed to start service", "error", err)
 		return
 	}
+
+	log.Debug("Initialized statediff plugin")
 }
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {

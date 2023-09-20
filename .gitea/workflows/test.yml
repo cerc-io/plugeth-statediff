@@ -11,49 +11,49 @@ on:
 # Needed until we can incorporate docker startup into the executor container
 env:
   DOCKER_HOST: unix:///var/run/dind.sock
+  SO_VERSION: v1.1.0-c30c779-202309082138
 
 jobs:
   unit-tests:
-    name: "Run unit tests"
+    name: Run unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
           check-latest: true
-      - name: "Run dockerd"
+      - name: Run dockerd
         run: |
           dockerd -H $DOCKER_HOST --userland-proxy=false &
           sleep 5
-      - name: "Run DB container"
+      - name: Run DB container
         run: |
           docker compose -f test/compose.yml up --wait
-      - name: "Set up Gitea access token"
+      - name: Set up Gitea access token
         env:
           TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
         run: |
           git config --global url."https://$TOKEN:@git.vdb.to/".insteadOf https://git.vdb.to/
-      - name: "Run tests"
-        run: go test -v ./...
+      - name: Run tests
+        run: go test -p 1 -v ./...
 
   integration-tests:
-    name: "Run integration tests"
+    name: Run integration tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           path: ./plugeth-statediff
-        # TODO: replace with release
       - uses: actions/checkout@v3
         with:
           repository: cerc-io/plugeth
           ref: statediff
           path: ./plugeth
-      - name: "Run dockerd"
+      - name: Run dockerd
         run: dockerd -H $DOCKER_HOST --userland-proxy=false &
         # These images need access tokens configured
-      - name: "Build docker image"
+      - name: Build docker image
         env:
           TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
         run: |
@@ -63,26 +63,27 @@ jobs:
           docker build ./plugeth -t cerc/plugeth:local \
             --build-arg GIT_VDBTO_TOKEN="$TOKEN"
 
-      - name: "Install stack-orchestrator"
-        uses: actions/checkout@v3
-        with:
-          repository: cerc-io/stack-orchestrator
-          ref: v1.1.0-e856616-202308032031
-          path: ./stack-orchestrator
-      - run: |
-          apt-get update && apt-get install -y python3-pip
-          pip install ./stack-orchestrator
-      - name: "Clone system-tests"
+      - name: Install stack-orchestrator
+        run: |
+          curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
+          chmod +x laconic-so
+      - name: Clone system-tests
         uses: actions/checkout@v3
         with:
           repository: cerc-io/system-tests
-          ref: roy/plugeth-fixes
+          ref: plugeth-compat
           path: ./system-tests
           token: ${{ secrets.CICD_REPO_TOKEN }}
-      - name: "Run testnet stack"
+      - name: Run testnet stack
         working-directory: ./plugeth-statediff
+        env:
+          LACONIC_SO: ../laconic-so
         run: ./scripts/integration-setup.sh
-      - name: "Run tests"
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+      - name: Run tests
         working-directory: ./system-tests
         run: |
           pip install pytest

@@ -6,8 +6,9 @@ import (
 	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
-// The geth sync logs are noisy, it can be useful to silence them
-func SilenceLogs() {
+// QuietLogs silences the geth logs and sets the plugin test log level to "warning"
+// The geth sync logs are noisy, so it can be nice to silence them.
+func QuietLogs() {
 	geth_log.Root().SetHandler(geth_log.DiscardHandler())
 	log.TestLogger.SetLevel(2)
 }

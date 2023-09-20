@@ -9,7 +9,8 @@ $(MOCKS_DIR)/gen_backend.go:
 		github.com/openrelayxyz/plugeth-utils/core Backend,Downloader
 
 docker-image: mocks
-	docker build . -t "cerc/plugeth-statediff:local"
+	docker build . -t "cerc/plugeth-statediff:local" \
+		--build-arg GIT_VDBTO_TOKEN
 .PHONY: docker-image
 
 # Local build

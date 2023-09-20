@@ -3,6 +3,7 @@ module github.com/cerc-io/plugeth-statediff
 go 1.19
 
 require (
+	github.com/cerc-io/eth-testing v0.2.1
 	github.com/ethereum/go-ethereum v1.11.6
 	github.com/georgysavva/scany v0.2.9
 	github.com/golang/mock v1.6.0
@@ -122,6 +123,7 @@ require (
 )
 
 replace (
+	github.com/cerc-io/eth-testing => git.vdb.to/cerc-io/eth-testing v0.2.1
 	github.com/ethereum/go-ethereum => git.vdb.to/cerc-io/plugeth v0.0.0-20230808125822-691dc334fab1
 	github.com/openrelayxyz/plugeth-utils => git.vdb.to/cerc-io/plugeth-utils v0.0.0-20230706160122-cd41de354c46
 )

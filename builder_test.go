@@ -27,7 +27,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	statediff "github.com/cerc-io/plugeth-statediff"
-	"github.com/cerc-io/plugeth-statediff/adapt"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 	"github.com/cerc-io/plugeth-statediff/test_helpers"
@@ -37,8 +36,8 @@ import (
 
 var (
 	contractLeafKey                                        []byte
-	emptyDiffs                                             = make([]sdtypes.StateLeafNode, 0)
-	emptyStorage                                           = make([]sdtypes.StorageLeafNode, 0)
+	emptyDiffs                                             []sdtypes.StateLeafNode
+	emptyStorage                                           []sdtypes.StorageLeafNode
 	block0, block1, block2, block3, block4, block5, block6 *types.Block
 	builder                                                statediff.Builder
 	minerAddress                                           = common.HexToAddress("0x0")
@@ -796,7 +795,7 @@ func TestBuilder(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())),
+	test_helpers.RunBuilderTests(t, chain.StateCache(),
 		tests, params, test_helpers.CheckedRoots{
 			block0: bankAccountAtBlock0LeafNode,
 			block1: block1BranchRootNode,
@@ -1010,7 +1009,7 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block0: bankAccountAtBlock0LeafNode,
 		block1: block1BranchRootNode,
 		block2: block2BranchRootNode,
@@ -1260,7 +1259,7 @@ func TestBuilderWithRemovedAccountAndStorage(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
 		block6: block6BranchRootNode,
@@ -1394,7 +1393,7 @@ func TestBuilderWithRemovedNonWatchedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
 		block6: block6BranchRootNode,
@@ -1597,7 +1596,7 @@ func TestBuilderWithRemovedWatchedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
 		block6: block6BranchRootNode,
@@ -1824,7 +1823,7 @@ func TestBuilderWithMovedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block1: block01BranchRootNode,
 		block2: bankAccountAtBlock02LeafNode,
 	})
@@ -2350,7 +2349,7 @@ func TestBuilderWithInternalizedLeafNode(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block1: block1bBranchRootNode,
 		block2: block2bBranchRootNode,
 		block3: block3bBranchRootNode,
@@ -2399,10 +2398,9 @@ func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
 			&sdtypes.StateObject{
 				BlockNumber: block0.Number(),
 				BlockHash:   block0.Hash(),
-				Nodes:       []sdtypes.StateLeafNode{},
-				IPLDs:       []sdtypes.IPLD{}, // there's some kind of weird behavior where if our root node is a leaf node
-				// even though it is along the path to the watched leaf (necessarily, as it is the root) it doesn't get included
-				// unconsequential, but kinda odd.
+				// there's some kind of weird behavior where if our root node is a leaf node even
+				// though it is along the path to the watched leaf (necessarily, as it is the root)
+				// it doesn't get included. unconsequential, but kinda odd.
 			},
 		},
 		{
@@ -2417,7 +2415,6 @@ func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
 			&sdtypes.StateObject{
 				BlockNumber: block1.Number(),
 				BlockHash:   block1.Hash(),
-				Nodes:       []sdtypes.StateLeafNode{},
 				IPLDs: []sdtypes.IPLD{
 					{
 						CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, crypto.Keccak256(block1bBranchRootNode)).String(),
@@ -2553,7 +2550,7 @@ func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, statediff.NewBuilder(adapt.GethStateView(chain.StateCache())), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
 		block1: block1bBranchRootNode,
 		block2: block2bBranchRootNode,
 		block3: block3bBranchRootNode,

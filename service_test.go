@@ -41,7 +41,7 @@ import (
 )
 
 func init() {
-	test_helpers.SilenceLogs()
+	test_helpers.QuietLogs()
 }
 
 func TestServiceLoop(t *testing.T) {

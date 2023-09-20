@@ -72,65 +72,41 @@ type IndexerMetricsHandles struct {
 	StateStoreCodeProcessingTimer metrics.Timer
 
 	// Fine-grained code timers
-	BuildStateDiffTimer                   metrics.Timer
-	CreatedAndUpdatedStateTimer           metrics.Timer
-	DeletedOrUpdatedStateTimer            metrics.Timer
-	BuildAccountUpdatesTimer              metrics.Timer
-	BuildAccountCreationsTimer            metrics.Timer
-	ResolveNodeTimer                      metrics.Timer
-	SortKeysTimer                         metrics.Timer
-	FindIntersectionTimer                 metrics.Timer
-	OutputTimer                           metrics.Timer
-	IPLDOutputTimer                       metrics.Timer
-	DifferenceIteratorNextTimer           metrics.Timer
-	DifferenceIteratorCounter             metrics.Counter
-	DeletedOrUpdatedStorageTimer          metrics.Timer
-	CreatedAndUpdatedStorageTimer         metrics.Timer
-	BuildStorageNodesIncrementalTimer     metrics.Timer
-	BuildStateDiffObjectTimer             metrics.Timer
-	WriteStateDiffObjectTimer             metrics.Timer
-	BuildStorageNodesEventualTimer        metrics.Timer
-	BuildStorageNodesFromTrieTimer        metrics.Timer
-	BuildRemovedAccountStorageNodesTimer  metrics.Timer
-	BuildRemovedStorageNodesFromTrieTimer metrics.Timer
-	IsWatchedAddressTimer                 metrics.Timer
+	ProcessAccountsTimer              metrics.Timer
+	OutputTimer                       metrics.Timer
+	IPLDOutputTimer                   metrics.Timer
+	DifferenceIteratorCounter         metrics.Counter
+	BuildStateDiffObjectTimer         metrics.Timer
+	WriteStateDiffTimer               metrics.Timer
+	ProcessStorageUpdatesTimer        metrics.Timer
+	ProcessStorageCreationsTimer      metrics.Timer
+	ProcessRemovedAccountStorageTimer metrics.Timer
+	IsWatchedAddressTimer             metrics.Timer
 }
 
 func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	ctx := IndexerMetricsHandles{
-		BlocksCounter:                         metrics.NewCounter(),
-		TransactionsCounter:                   metrics.NewCounter(),
-		ReceiptsCounter:                       metrics.NewCounter(),
-		LogsCounter:                           metrics.NewCounter(),
-		AccessListEntriesCounter:              metrics.NewCounter(),
-		FreePostgresTimer:                     metrics.NewTimer(),
-		PostgresCommitTimer:                   metrics.NewTimer(),
-		HeaderProcessingTimer:                 metrics.NewTimer(),
-		UncleProcessingTimer:                  metrics.NewTimer(),
-		TxAndRecProcessingTimer:               metrics.NewTimer(),
-		StateStoreCodeProcessingTimer:         metrics.NewTimer(),
-		BuildStateDiffTimer:                   metrics.NewTimer(),
-		CreatedAndUpdatedStateTimer:           metrics.NewTimer(),
-		DeletedOrUpdatedStateTimer:            metrics.NewTimer(),
-		BuildAccountUpdatesTimer:              metrics.NewTimer(),
-		BuildAccountCreationsTimer:            metrics.NewTimer(),
-		ResolveNodeTimer:                      metrics.NewTimer(),
-		SortKeysTimer:                         metrics.NewTimer(),
-		FindIntersectionTimer:                 metrics.NewTimer(),
-		OutputTimer:                           metrics.NewTimer(),
-		IPLDOutputTimer:                       metrics.NewTimer(),
-		DifferenceIteratorNextTimer:           metrics.NewTimer(),
-		DifferenceIteratorCounter:             metrics.NewCounter(),
-		DeletedOrUpdatedStorageTimer:          metrics.NewTimer(),
-		CreatedAndUpdatedStorageTimer:         metrics.NewTimer(),
-		BuildStorageNodesIncrementalTimer:     metrics.NewTimer(),
-		BuildStateDiffObjectTimer:             metrics.NewTimer(),
-		WriteStateDiffObjectTimer:             metrics.NewTimer(),
-		BuildStorageNodesEventualTimer:        metrics.NewTimer(),
-		BuildStorageNodesFromTrieTimer:        metrics.NewTimer(),
-		BuildRemovedAccountStorageNodesTimer:  metrics.NewTimer(),
-		BuildRemovedStorageNodesFromTrieTimer: metrics.NewTimer(),
-		IsWatchedAddressTimer:                 metrics.NewTimer(),
+		BlocksCounter:                     metrics.NewCounter(),
+		TransactionsCounter:               metrics.NewCounter(),
+		ReceiptsCounter:                   metrics.NewCounter(),
+		LogsCounter:                       metrics.NewCounter(),
+		AccessListEntriesCounter:          metrics.NewCounter(),
+		FreePostgresTimer:                 metrics.NewTimer(),
+		PostgresCommitTimer:               metrics.NewTimer(),
+		HeaderProcessingTimer:             metrics.NewTimer(),
+		UncleProcessingTimer:              metrics.NewTimer(),
+		TxAndRecProcessingTimer:           metrics.NewTimer(),
+		StateStoreCodeProcessingTimer:     metrics.NewTimer(),
+		ProcessAccountsTimer:              metrics.NewTimer(),
+		OutputTimer:                       metrics.NewTimer(),
+		IPLDOutputTimer:                   metrics.NewTimer(),
+		DifferenceIteratorCounter:         metrics.NewCounter(),
+		BuildStateDiffObjectTimer:         metrics.NewTimer(),
+		WriteStateDiffTimer:               metrics.NewTimer(),
+		ProcessStorageUpdatesTimer:        metrics.NewTimer(),
+		ProcessStorageCreationsTimer:      metrics.NewTimer(),
+		ProcessRemovedAccountStorageTimer: metrics.NewTimer(),
+		IsWatchedAddressTimer:             metrics.NewTimer(),
 	}
 	subsys := "indexer"
 	reg.Register(metricName(subsys, "blocks"), ctx.BlocksCounter)
@@ -144,28 +120,15 @@ func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	reg.Register(metricName(subsys, "t_uncle_processing"), ctx.UncleProcessingTimer)
 	reg.Register(metricName(subsys, "t_tx_receipt_processing"), ctx.TxAndRecProcessingTimer)
 	reg.Register(metricName(subsys, "t_state_store_code_processing"), ctx.StateStoreCodeProcessingTimer)
-	reg.Register(metricName(subsys, "t_build_statediff"), ctx.BuildStateDiffTimer)
-	reg.Register(metricName(subsys, "t_created_and_update_state"), ctx.CreatedAndUpdatedStateTimer)
-	reg.Register(metricName(subsys, "t_deleted_or_updated_state"), ctx.DeletedOrUpdatedStateTimer)
-	reg.Register(metricName(subsys, "t_build_account_updates"), ctx.BuildAccountUpdatesTimer)
-	reg.Register(metricName(subsys, "t_build_account_creations"), ctx.BuildAccountCreationsTimer)
-	reg.Register(metricName(subsys, "t_resolve_node"), ctx.ResolveNodeTimer)
-	reg.Register(metricName(subsys, "t_sort_keys"), ctx.SortKeysTimer)
-	reg.Register(metricName(subsys, "t_find_intersection"), ctx.FindIntersectionTimer)
 	reg.Register(metricName(subsys, "t_output_fn"), ctx.OutputTimer)
 	reg.Register(metricName(subsys, "t_ipld_output_fn"), ctx.IPLDOutputTimer)
-	reg.Register(metricName(subsys, "t_difference_iterator_next"), ctx.DifferenceIteratorNextTimer)
 	reg.Register(metricName(subsys, "difference_iterator_counter"), ctx.DifferenceIteratorCounter)
-	reg.Register(metricName(subsys, "t_created_and_updated_storage"), ctx.CreatedAndUpdatedStorageTimer)
-	reg.Register(metricName(subsys, "t_deleted_or_updated_storage"), ctx.DeletedOrUpdatedStorageTimer)
-	reg.Register(metricName(subsys, "t_build_storage_nodes_incremental"), ctx.BuildStorageNodesIncrementalTimer)
 	reg.Register(metricName(subsys, "t_build_statediff_object"), ctx.BuildStateDiffObjectTimer)
-	reg.Register(metricName(subsys, "t_write_statediff_object"), ctx.WriteStateDiffObjectTimer)
-	reg.Register(metricName(subsys, "t_created_and_updated_state"), ctx.CreatedAndUpdatedStateTimer)
-	reg.Register(metricName(subsys, "t_build_storage_nodes_eventual"), ctx.BuildStorageNodesEventualTimer)
-	reg.Register(metricName(subsys, "t_build_storage_nodes_from_trie"), ctx.BuildStorageNodesFromTrieTimer)
-	reg.Register(metricName(subsys, "t_build_removed_accounts_storage_nodes"), ctx.BuildRemovedAccountStorageNodesTimer)
-	reg.Register(metricName(subsys, "t_build_removed_storage_nodes_from_trie"), ctx.BuildRemovedStorageNodesFromTrieTimer)
+	reg.Register(metricName(subsys, "t_write_statediff_object"), ctx.WriteStateDiffTimer)
+	reg.Register(metricName(subsys, "t_process_accounts"), ctx.ProcessAccountsTimer)
+	reg.Register(metricName(subsys, "t_process_storage_updates"), ctx.ProcessStorageUpdatesTimer)
+	reg.Register(metricName(subsys, "t_process_storage_creations"), ctx.ProcessStorageCreationsTimer)
+	reg.Register(metricName(subsys, "t_process_removed_account_storage"), ctx.ProcessRemovedAccountStorageTimer)
 	reg.Register(metricName(subsys, "t_is_watched_address"), ctx.IsWatchedAddressTimer)
 
 	log.Debug("Registering statediff indexer metrics.")

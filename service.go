@@ -819,23 +819,23 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 		return err
 	}
 
-	output := func(node types2.StateLeafNode) error {
+	nodeSink := func(node types2.StateLeafNode) error {
 		defer metrics.ReportAndUpdateDuration("statediff output", time.Now(), log,
 			metrics.IndexerMetrics.OutputTimer)
 		return sds.indexer.PushStateNode(tx, node, block.Hash().String())
 	}
-	ipldOutput := func(c types2.IPLD) error {
+	ipldSink := func(c types2.IPLD) error {
 		defer metrics.ReportAndUpdateDuration("statediff ipldOutput", time.Now(), log,
 			metrics.IndexerMetrics.IPLDOutputTimer)
 		return sds.indexer.PushIPLD(tx, c)
 	}
 
-	err = sds.Builder.WriteStateDiffObject(Args{
+	err = sds.Builder.WriteStateDiff(Args{
 		NewStateRoot: block.Root(),
 		OldStateRoot: parentRoot,
 		BlockHash:    block.Hash(),
 		BlockNumber:  block.Number(),
-	}, params, output, ipldOutput)
+	}, params, nodeSink, ipldSink)
 
 	// TODO this anti-pattern needs to be sorted out eventually
 	if err = tx.Submit(err); err != nil {
@@ -885,7 +885,6 @@ func (sds *Service) UnsubscribeWriteStatus(id SubID) {
 // add | remove | set | clear
 func (sds *Service) WatchAddress(operation types2.OperationType, args []types2.WatchAddressArg) error {
 	sds.writeLoopParams.Lock()
-	log.Debug("WatchAddress: locked sds.writeLoopParams")
 	defer sds.writeLoopParams.Unlock()
 
 	// get the current block number

@@ -99,6 +99,7 @@ func (p *ParamsWithMutex) CopyParams() Params {
 
 // Args bundles the arguments for the state diff builder
 type Args struct {
-	OldStateRoot, NewStateRoot, BlockHash common.Hash
-	BlockNumber                           *big.Int
+	OldStateRoot, NewStateRoot common.Hash
+	BlockHash                  common.Hash
+	BlockNumber                *big.Int
 }
