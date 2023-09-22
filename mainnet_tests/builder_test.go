@@ -566,7 +566,9 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 						},
 						StorageDiff: emptyStorage,
 					},
-					{ // this is the new account created due to the coinbase mining a block, it's creation shouldn't affect 0x 0e 05 07
+					{
+						// this is the new account created due to the coinbase mining a block, its
+						// creation shouldn't affect 0x 0e 05 07
 						Removed: false,
 						AccountWrapper: sdtypes.AccountWrapper{
 							Account: block3CoinbaseAccount,
@@ -622,11 +624,10 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t,
-		chain.StateCache(),
-		tests, params, test_helpers.CheckedRoots{
-			block1: block1RootBranchNode,
-			block2: block2RootBranchNode,
-			block3: block3RootBranchNode,
-		})
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
+		block1: block1RootBranchNode,
+		block2: block2RootBranchNode,
+		block3: block3RootBranchNode,
+	}.Check(t)
 }

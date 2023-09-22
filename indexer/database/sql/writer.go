@@ -29,6 +29,7 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
 	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
 )
 
 // Writer handles processing and writing of indexed IPLD objects to Postgres
@@ -65,7 +66,8 @@ func (w *Writer) detectGaps(beginBlockNumber uint64, endBlockNumber uint64) ([]*
 	// pgx misdetects the parameter OIDs and selects int8, which can overflow.
 	// unfortunately there is no good place to override it, so it is safer to pass the uint64s as text
 	// and let PG handle the cast
-	err := w.db.Select(w.db.Context(), &gaps, w.db.DetectGapsStm(), strconv.FormatUint(beginBlockNumber, 10), strconv.FormatUint(endBlockNumber, 10))
+	err := w.db.Select(w.db.Context(), &gaps, w.db.DetectGapsStm(),
+		strconv.FormatUint(beginBlockNumber, 10), strconv.FormatUint(endBlockNumber, 10))
 	return gaps, err
 }
 
@@ -177,7 +179,8 @@ func (w *Writer) upsertTransactionCID(tx Tx, transaction models.TxModel) error {
 			return insertError{"eth.transaction_cids", err, "COPY", transaction}
 		}
 
-		_, err = tx.CopyFrom(w.db.Context(), w.db.TxTableName(), w.db.TxColumnNames(),
+		_, err = tx.CopyFrom(w.db.Context(),
+			schema.TableTransaction.TableName(), schema.TableTransaction.ColumnNames(),
 			toRows(toRow(blockNum, transaction.HeaderID, transaction.TxHash, transaction.CID, transaction.Dst,
 				transaction.Src, transaction.Index, int(transaction.Type), value)))
 		if err != nil {
@@ -213,7 +216,7 @@ func (w *Writer) upsertReceiptCID(tx Tx, rct *models.ReceiptModel) error {
 			return insertError{"eth.receipt_cids", err, "COPY", rct}
 		}
 
-		_, err = tx.CopyFrom(w.db.Context(), w.db.RctTableName(), w.db.RctColumnNames(),
+		_, err = tx.CopyFrom(w.db.Context(), schema.TableReceipt.TableName(), schema.TableReceipt.ColumnNames(),
 			toRows(toRow(blockNum, rct.HeaderID, rct.TxID, rct.CID, rct.Contract,
 				rct.PostState, int(rct.PostStatus))))
 		if err != nil {
@@ -253,7 +256,7 @@ func (w *Writer) upsertLogCID(tx Tx, logs []*models.LogsModel) error {
 				log.Address, log.Index, log.Topic0, log.Topic1, log.Topic2, log.Topic3))
 		}
 		if nil != rows && len(rows) >= 0 {
-			_, err := tx.CopyFrom(w.db.Context(), w.db.LogTableName(), w.db.LogColumnNames(), rows)
+			_, err := tx.CopyFrom(w.db.Context(), schema.TableLog.TableName(), schema.TableLog.ColumnNames(), rows)
 			if err != nil {
 				return insertError{"eth.log_cids", err, "COPY", rows}
 			}
@@ -302,7 +305,8 @@ func (w *Writer) upsertStateCID(tx Tx, stateNode models.StateNodeModel) error {
 			return insertError{"eth.state_cids", err, "COPY", stateNode}
 		}
 
-		_, err = tx.CopyFrom(w.db.Context(), w.db.StateTableName(), w.db.StateColumnNames(),
+		_, err = tx.CopyFrom(w.db.Context(),
+			schema.TableStateNode.TableName(), schema.TableStateNode.ColumnNames(),
 			toRows(toRow(blockNum, stateNode.HeaderID, stateNode.StateKey, stateNode.CID,
 				true, balance, stateNode.Nonce, stateNode.CodeHash, stateNode.StorageRoot, stateNode.Removed)))
 		if err != nil {
@@ -339,7 +343,8 @@ func (w *Writer) upsertStorageCID(tx Tx, storageCID models.StorageNodeModel) err
 			return insertError{"eth.storage_cids", err, "COPY", storageCID}
 		}
 
-		_, err = tx.CopyFrom(w.db.Context(), w.db.StorageTableName(), w.db.StorageColumnNames(),
+		_, err = tx.CopyFrom(w.db.Context(),
+			schema.TableStorageNode.TableName(), schema.TableStorageNode.ColumnNames(),
 			toRows(toRow(blockNum, storageCID.HeaderID, storageCID.StateKey, storageCID.StorageKey, storageCID.CID,
 				true, storageCID.Value, storageCID.Removed)))
 		if err != nil {

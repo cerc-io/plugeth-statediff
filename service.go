@@ -166,10 +166,12 @@ func NewService(cfg Config, blockChain BlockChain, backend plugeth.Backend, inde
 		workers = 1
 	}
 
+	builder := NewBuilder(blockChain.StateCache())
+	builder.SetSubtrieWorkers(cfg.SubtrieWorkers)
 	quitCh := make(chan bool)
 	sds := &Service{
 		BlockChain:              blockChain,
-		Builder:                 NewBuilder(blockChain.StateCache()),
+		Builder:                 builder,
 		QuitChan:                quitCh,
 		Subscriptions:           make(map[common.Hash]map[SubID]Subscription),
 		SubscriptionTypes:       make(map[common.Hash]Params),
@@ -785,6 +787,10 @@ func (sds *Service) claimExclusiveAccess(block *types.Block) (bool, func()) {
 
 // Writes a state diff from the current block, parent state root, and provided params
 func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, params Params) error {
+	if sds.indexer == nil {
+		return fmt.Errorf("indexer is not set; cannot write indexed diffs")
+	}
+
 	log := log.New("hash", block.Hash(), "number", block.Number())
 	if granted, relinquish := sds.claimExclusiveAccess(block); granted {
 		defer relinquish()
@@ -804,9 +810,6 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 
 	start := countStateDiffBegin(block, log)
 	defer countStateDiffEnd(start, log, &err)
-	if sds.indexer == nil {
-		return fmt.Errorf("indexer is not set; cannot write indexed diffs")
-	}
 
 	if params.IncludeTD {
 		totalDifficulty = sds.BlockChain.GetTd(block.Hash(), block.NumberU64())
@@ -819,14 +822,17 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 		return err
 	}
 
+	var nodeMtx, ipldMtx sync.Mutex
 	nodeSink := func(node types2.StateLeafNode) error {
-		defer metrics.ReportAndUpdateDuration("statediff output", time.Now(), log,
-			metrics.IndexerMetrics.OutputTimer)
+		defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.OutputTimer)
+		nodeMtx.Lock()
+		defer nodeMtx.Unlock()
 		return sds.indexer.PushStateNode(tx, node, block.Hash().String())
 	}
 	ipldSink := func(c types2.IPLD) error {
-		defer metrics.ReportAndUpdateDuration("statediff ipldOutput", time.Now(), log,
-			metrics.IndexerMetrics.IPLDOutputTimer)
+		defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.IPLDOutputTimer)
+		ipldMtx.Lock()
+		defer ipldMtx.Unlock()
 		return sds.indexer.PushIPLD(tx, c)
 	}
 

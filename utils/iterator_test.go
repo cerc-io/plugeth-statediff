@@ -58,6 +58,7 @@ func TestSymmetricDifferenceIterator(t *testing.T) {
 		}
 		assert.Equal(t, 2, *count)
 
+		// TODO will fail until fixed https://github.com/ethereum/go-ethereum/pull/27838
 		trieb := trie.NewEmpty(db)
 		di, count = utils.NewSymmetricDifferenceIterator(
 			triea.NodeIterator([]byte("jars")),

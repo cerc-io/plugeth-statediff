@@ -102,7 +102,7 @@ func TestPostgresSQLX(t *testing.T) {
 			t.Fatal("Expected an error")
 		}
 
-		expectContainsSubstring(t, err.Error(), postgres.DbConnectionFailedMsg)
+		require.Contains(t, err.Error(), postgres.DbConnectionFailedMsg)
 	})
 
 	t.Run("throws error when can't create node", func(t *testing.T) {
@@ -114,6 +114,6 @@ func TestPostgresSQLX(t *testing.T) {
 			t.Fatal("Expected an error")
 		}
 
-		expectContainsSubstring(t, err.Error(), postgres.SettingNodeFailedMsg)
+		require.Contains(t, err.Error(), postgres.SettingNodeFailedMsg)
 	})
 }

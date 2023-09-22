@@ -3,6 +3,7 @@ module github.com/cerc-io/plugeth-statediff
 go 1.19
 
 require (
+	github.com/cerc-io/eth-iterator-utils v0.1.1
 	github.com/cerc-io/eth-testing v0.2.1
 	github.com/ethereum/go-ethereum v1.11.6
 	github.com/georgysavva/scany v0.2.9
@@ -18,8 +19,9 @@ require (
 	github.com/openrelayxyz/plugeth-utils v1.2.0
 	github.com/pganalyze/pg_query_go/v4 v4.2.1
 	github.com/shopspring/decimal v1.2.0
-	github.com/stretchr/testify v1.8.1
-	github.com/thoas/go-funk v0.9.2
+	github.com/stretchr/testify v1.8.2
+	github.com/thoas/go-funk v0.9.3
+	golang.org/x/sync v0.1.0
 )
 
 require (
@@ -109,7 +111,6 @@ require (
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
 	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
@@ -123,6 +124,7 @@ require (
 )
 
 replace (
+	github.com/cerc-io/eth-iterator-utils => git.vdb.to/cerc-io/eth-iterator-utils v0.1.1
 	github.com/cerc-io/eth-testing => git.vdb.to/cerc-io/eth-testing v0.2.1
 	github.com/ethereum/go-ethereum => git.vdb.to/cerc-io/plugeth v0.0.0-20230808125822-691dc334fab1
 	github.com/openrelayxyz/plugeth-utils => git.vdb.to/cerc-io/plugeth-utils v0.0.0-20230706160122-cd41de354c46

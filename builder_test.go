@@ -795,13 +795,13 @@ func TestBuilder(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(),
-		tests, params, test_helpers.CheckedRoots{
-			block0: bankAccountAtBlock0LeafNode,
-			block1: block1BranchRootNode,
-			block2: block2BranchRootNode,
-			block3: block3BranchRootNode,
-		})
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
+		block0: bankAccountAtBlock0LeafNode,
+		block1: block1BranchRootNode,
+		block2: block2BranchRootNode,
+		block3: block3BranchRootNode,
+	}.Check(t)
 }
 
 func TestBuilderWithWatchedAddressList(t *testing.T) {
@@ -1009,12 +1009,13 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block0: bankAccountAtBlock0LeafNode,
 		block1: block1BranchRootNode,
 		block2: block2BranchRootNode,
 		block3: block3BranchRootNode,
-	})
+	}.Check(t)
 }
 
 func TestBuilderWithRemovedAccountAndStorage(t *testing.T) {
@@ -1259,11 +1260,12 @@ func TestBuilderWithRemovedAccountAndStorage(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
 		block6: block6BranchRootNode,
-	})
+	}.Check(t)
 }
 
 func TestBuilderWithRemovedNonWatchedAccount(t *testing.T) {
@@ -1393,11 +1395,12 @@ func TestBuilderWithRemovedNonWatchedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
 		block6: block6BranchRootNode,
-	})
+	}.Check(t)
 }
 
 func TestBuilderWithRemovedWatchedAccount(t *testing.T) {
@@ -1596,11 +1599,12 @@ func TestBuilderWithRemovedWatchedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
 		block6: block6BranchRootNode,
-	})
+	}.Check(t)
 }
 
 var (
@@ -1823,10 +1827,11 @@ func TestBuilderWithMovedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block1: block01BranchRootNode,
 		block2: bankAccountAtBlock02LeafNode,
-	})
+	}.Check(t)
 }
 
 /*
@@ -2349,11 +2354,12 @@ func TestBuilderWithInternalizedLeafNode(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block1: block1bBranchRootNode,
 		block2: block2bBranchRootNode,
 		block3: block3bBranchRootNode,
-	})
+	}.Check(t)
 }
 
 func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
@@ -2550,11 +2556,12 @@ func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, test_helpers.CheckedRoots{
+	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.CheckedRoots{
 		block1: block1bBranchRootNode,
 		block2: block2bBranchRootNode,
 		block3: block3bBranchRootNode,
-	})
+	}.Check(t)
 }
 
 /*

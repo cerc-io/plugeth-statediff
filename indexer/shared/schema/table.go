@@ -45,6 +45,7 @@ type Column struct {
 	Type  colType
 	Array bool
 }
+
 type Table struct {
 	Name    string
 	Columns []Column
@@ -115,6 +116,20 @@ func (tbl *Table) ToInsertStatement(upsert bool) string {
 		"INSERT INTO %s (%s) VALUES (%s) %s",
 		tbl.Name, strings.Join(colnames, ", "), strings.Join(placeholders, ", "), suffix,
 	)
+}
+
+// TableName returns a pgx-compatible table name.
+func (tbl *Table) TableName() []string {
+	return strings.Split(tbl.Name, ".")
+}
+
+// ColumnNames returns the ordered list of column names.
+func (tbl *Table) ColumnNames() []string {
+	var names []string
+	for _, col := range tbl.Columns {
+		names = append(names, col.Name)
+	}
+	return names
 }
 
 func sprintf(f string) colfmt {

@@ -58,18 +58,6 @@ type Statements interface {
 	InsertStorageStm() string
 	InsertIPLDStm() string
 	InsertIPLDsStm() string
-
-	// Table/column descriptions for use with CopyFrom and similar commands.
-	LogTableName() []string
-	LogColumnNames() []string
-	RctTableName() []string
-	RctColumnNames() []string
-	StateTableName() []string
-	StateColumnNames() []string
-	StorageTableName() []string
-	StorageColumnNames() []string
-	TxTableName() []string
-	TxColumnNames() []string
 }
 
 // Tx interface to accommodate different concrete SQL transaction types

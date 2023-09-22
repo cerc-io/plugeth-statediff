@@ -21,14 +21,18 @@ package statediff
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"sync"
 	"time"
 
+	iterutils "github.com/cerc-io/eth-iterator-utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cerc-io/plugeth-statediff/adapt"
 	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
@@ -44,6 +48,8 @@ var (
 	emptyContractRoot = crypto.Keccak256Hash(emptyNode)
 	nullCodeHash      = crypto.Keccak256([]byte{})
 	zeroHash          common.Hash
+
+	defaultSubtrieWorkers uint = 1
 )
 
 // Builder interface exposes the method for building a state diff between two blocks
@@ -54,11 +60,8 @@ type Builder interface {
 
 type StateDiffBuilder struct {
 	// state cache is safe for concurrent reads
-	stateCache adapt.StateView
-}
-
-type iterPair struct {
-	Older, Newer trie.NodeIterator
+	stateCache     adapt.StateView
+	subtrieWorkers uint
 }
 
 type accountUpdate struct {
@@ -74,11 +77,31 @@ func appender[T any](to *[]T) func(T) error {
 	}
 }
 
-// NewBuilder is used to create a statediff builder
-func NewBuilder(stateCache adapt.StateView) Builder {
-	return &StateDiffBuilder{
-		stateCache: stateCache,
+func syncedAppender[T any](to *[]T) func(T) error {
+	var mtx sync.Mutex
+	return func(a T) error {
+		mtx.Lock()
+		*to = append(*to, a)
+		mtx.Unlock()
+		return nil
 	}
+}
+
+// NewBuilder is used to create a statediff builder
+func NewBuilder(stateCache adapt.StateView) *StateDiffBuilder {
+	return &StateDiffBuilder{
+		stateCache:     stateCache,
+		subtrieWorkers: defaultSubtrieWorkers,
+	}
+}
+
+// SetSubtrieWorkers sets the number of disjoint subtries to divide among parallel workers.
+// Passing 0 will reset this to the default value.
+func (sdb *StateDiffBuilder) SetSubtrieWorkers(n uint) {
+	if n == 0 {
+		n = defaultSubtrieWorkers
+	}
+	sdb.subtrieWorkers = n
 }
 
 // BuildStateDiffObject builds a statediff object from two blocks and the provided parameters
@@ -86,7 +109,7 @@ func (sdb *StateDiffBuilder) BuildStateDiffObject(args Args, params Params) (sdt
 	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.BuildStateDiffObjectTimer)
 	var stateNodes []sdtypes.StateLeafNode
 	var iplds []sdtypes.IPLD
-	err := sdb.WriteStateDiff(args, params, appender(&stateNodes), appender(&iplds))
+	err := sdb.WriteStateDiff(args, params, syncedAppender(&stateNodes), syncedAppender(&iplds))
 	if err != nil {
 		return sdtypes.StateObject{}, err
 	}
@@ -106,35 +129,39 @@ func (sdb *StateDiffBuilder) WriteStateDiff(
 ) error {
 	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.WriteStateDiffTimer)
 	// Load tries for old and new states
-	oldTrie, err := sdb.stateCache.OpenTrie(args.OldStateRoot)
+	triea, err := sdb.stateCache.OpenTrie(args.OldStateRoot)
 	if err != nil {
 		return fmt.Errorf("error opening old state trie: %w", err)
 	}
-	newTrie, err := sdb.stateCache.OpenTrie(args.NewStateRoot)
+	trieb, err := sdb.stateCache.OpenTrie(args.NewStateRoot)
 	if err != nil {
 		return fmt.Errorf("error opening new state trie: %w", err)
 	}
+	subitersA := iterutils.SubtrieIterators(triea.NodeIterator, uint(sdb.subtrieWorkers))
+	subitersB := iterutils.SubtrieIterators(trieb.NodeIterator, uint(sdb.subtrieWorkers))
 
-	iters := iterPair{
-		Older: oldTrie.NodeIterator(nil),
-		Newer: newTrie.NodeIterator(nil),
-	}
 	logger := log.New("hash", args.BlockHash, "number", args.BlockNumber)
-
-	err = sdb.processAccounts(
-		iters.Older, iters.Newer,
-		params.watchedAddressesLeafPaths,
-		nodeSink, ipldSink, logger)
-	if err != nil {
-		return fmt.Errorf("error collecting createdAndUpdatedNodes: %w", err)
+	// errgroup will cancel if any gr fails
+	g, ctx := errgroup.WithContext(context.Background())
+	for i := uint(0); i < sdb.subtrieWorkers; i++ {
+		func(subdiv uint) {
+			g.Go(func() error {
+				a, b := subitersA[subdiv], subitersB[subdiv]
+				return sdb.processAccounts(ctx,
+					a, b, params.watchedAddressesLeafPaths,
+					nodeSink, ipldSink, logger,
+				)
+			})
+		}(i)
 	}
-	return nil
+	return g.Wait()
 }
 
 // processAccounts processes account creations and deletions, and returns a set of updated
 // existing accounts, indexed by leaf key.
-func (sdb *StateDiffBuilder) processAccounts(a, b trie.NodeIterator,
-	watchedAddressesLeafPaths [][]byte,
+func (sdb *StateDiffBuilder) processAccounts(
+	ctx context.Context,
+	a, b trie.NodeIterator, watchedAddressesLeafPaths [][]byte,
 	nodeSink sdtypes.StateNodeSink, ipldSink sdtypes.IPLDSink,
 	logger log.Logger,
 ) error {
@@ -146,7 +173,14 @@ func (sdb *StateDiffBuilder) processAccounts(a, b trie.NodeIterator,
 	// Cache the RLP of the previous node. When we hit a value node this will be the parent blob.
 	var prevBlob []byte
 	it, itCount := utils.NewSymmetricDifferenceIterator(a, b)
+	prevBlob = it.NodeBlob()
 	for it.Next(true) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		// ignore node if it is not along paths of interest
 		if !isWatchedPathPrefix(watchedAddressesLeafPaths, it.Path()) {
 			continue
@@ -205,6 +239,7 @@ func (sdb *StateDiffBuilder) processAccounts(a, b trie.NodeIterator,
 			if it.Hash() == zeroHash {
 				continue
 			}
+			// TODO - this can be handled when value node is (craeted?)
 			nodeVal := make([]byte, len(it.NodeBlob()))
 			copy(nodeVal, it.NodeBlob())
 			// if doing a selective diff, we need to ensure this is a watched path

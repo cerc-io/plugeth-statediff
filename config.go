@@ -44,6 +44,8 @@ type Config struct {
 	BackfillCheckPastBlocks uint64
 	// Size of the worker pool
 	NumWorkers uint
+	// Number of subtries to iterate in parallel
+	SubtrieWorkers uint
 	// Should the statediff service wait until geth has synced to the head of the blockchain?
 	WaitForSync bool
 	// Context used during DB initialization

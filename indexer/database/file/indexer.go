@@ -57,7 +57,7 @@ type StateDiffIndexer struct {
 	chainConfig      *params.ChainConfig
 	nodeID           string
 	wg               *sync.WaitGroup
-	removedCacheFlag *uint32
+	removedCacheFlag uint32
 }
 
 // NewStateDiffIndexer creates a void implementation of interfaces.StateDiffIndexer
@@ -130,7 +130,6 @@ func (sdi *StateDiffIndexer) ReportDBMetrics(time.Duration, <-chan bool) {}
 // PushBlock pushes and indexes block data in sql, except state & storage nodes (includes header, uncles, transactions & receipts)
 // Returns an initiated DB transaction which must be Closed via defer to commit or rollback
 func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (interfaces.Batch, error) {
-	sdi.removedCacheFlag = new(uint32)
 	start, t := time.Now(), time.Now()
 	blockHash := block.Hash()
 	blockHashStr := blockHash.String()
@@ -223,11 +222,6 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 func (sdi *StateDiffIndexer) processHeader(header *types.Header, headerNode ipld.IPLD, reward, td *big.Int) string {
 	sdi.fileWriter.upsertIPLDNode(header.Number.String(), headerNode)
 
-	var baseFee *string
-	if header.BaseFee != nil {
-		baseFee = new(string)
-		*baseFee = header.BaseFee.String()
-	}
 	headerID := header.Hash().String()
 	sdi.fileWriter.upsertHeaderCID(models.HeaderModel{
 		NodeIDs:         pq.StringArray([]string{sdi.nodeID}),
@@ -388,8 +382,8 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 	// publish the state node
 	var stateModel models.StateNodeModel
 	if stateNode.Removed {
-		if atomic.LoadUint32(sdi.removedCacheFlag) == 0 {
-			atomic.StoreUint32(sdi.removedCacheFlag, 1)
+		if atomic.LoadUint32(&sdi.removedCacheFlag) == 0 {
+			atomic.StoreUint32(&sdi.removedCacheFlag, 1)
 			sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber, shared.RemovedNodeStateCID, []byte{})
 		}
 		stateModel = models.StateNodeModel{
@@ -419,8 +413,8 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 	// if there are any storage nodes associated with this node, publish and index them
 	for _, storageNode := range stateNode.StorageDiff {
 		if storageNode.Removed {
-			if atomic.LoadUint32(sdi.removedCacheFlag) == 0 {
-				atomic.StoreUint32(sdi.removedCacheFlag, 1)
+			if atomic.LoadUint32(&sdi.removedCacheFlag) == 0 {
+				atomic.StoreUint32(&sdi.removedCacheFlag, 1)
 				sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber, shared.RemovedNodeStorageCID, []byte{})
 			}
 			storageModel := models.StorageNodeModel{

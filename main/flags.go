@@ -46,7 +46,11 @@ func init() {
 	)
 	Flags.UintVar(&config.NumWorkers,
 		"statediff.workers", 1,
-		"Number of concurrent workers to use during statediff processing (default 1)",
+		"Number of concurrent workers to dispatch to during statediff processing",
+	)
+	Flags.UintVar(&config.SubtrieWorkers,
+		"statediff.subtries", 1,
+		"Number of subtries to iterate in parallel",
 	)
 	Flags.BoolVar(&config.WaitForSync,
 		"statediff.waitforsync", false,

@@ -36,12 +36,6 @@ var (
 	ctx          = context.Background()
 )
 
-func expectContainsSubstring(t *testing.T, full string, sub string) {
-	if !strings.Contains(full, sub) {
-		t.Fatalf("Expected \"%v\" to contain substring \"%v\"\n", full, sub)
-	}
-}
-
 func TestPostgresPGX(t *testing.T) {
 	t.Run("connects to the sql", func(t *testing.T) {
 		dbPool, err := pgxpool.ConnectConfig(context.Background(), pgxConfig)
@@ -105,7 +99,7 @@ func TestPostgresPGX(t *testing.T) {
 			t.Fatal("Expected an error")
 		}
 
-		expectContainsSubstring(t, err.Error(), postgres.DbConnectionFailedMsg)
+		require.Contains(t, err.Error(), postgres.DbConnectionFailedMsg)
 	})
 
 	t.Run("throws error when can't create node", func(t *testing.T) {
@@ -117,6 +111,6 @@ func TestPostgresPGX(t *testing.T) {
 			t.Fatal("Expected an error")
 		}
 
-		expectContainsSubstring(t, err.Error(), postgres.SettingNodeFailedMsg)
+		require.Contains(t, err.Error(), postgres.SettingNodeFailedMsg)
 	})
 }
