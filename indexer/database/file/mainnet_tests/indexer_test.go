@@ -83,7 +83,7 @@ func setupMainnetIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(chainConf, file.CSVTestConfig)
+	ind, err = file.NewStateDiffIndexer(chainConf, file.CSVTestConfig, test.LegacyNodeInfo)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()

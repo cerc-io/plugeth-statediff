@@ -20,11 +20,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
 	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ipfs/go-cid"
@@ -37,6 +37,14 @@ var (
 	legacyData      = mocks.NewLegacyData(LegacyConfig)
 	mockLegacyBlock *types.Block
 	legacyHeaderCID cid.Cid
+	// Mainnet node info
+	LegacyNodeInfo = node.Info{
+		GenesisBlock: "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
+		NetworkID:    "1",
+		ChainID:      1,
+		ID:           "mockNodeID",
+		ClientName:   "go-ethereum",
+	}
 )
 
 func SetupLegacyTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
@@ -51,7 +59,7 @@ func SetupLegacyTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
 	require.NoError(t, err)
 
 	defer func() {
-		if err := tx.Submit(err); err != nil {
+		if err := tx.Submit(); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -60,11 +68,7 @@ func SetupLegacyTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
 		require.NoError(t, err)
 	}
 
-	if batchTx, ok := tx.(*sql.BatchTx); ok {
-		require.Equal(t, legacyData.BlockNumber.String(), batchTx.BlockNumber)
-	} else if batchTx, ok := tx.(*file.BatchTx); ok {
-		require.Equal(t, legacyData.BlockNumber.String(), batchTx.BlockNumber)
-	}
+	require.Equal(t, legacyData.BlockNumber.String(), tx.BlockNumber())
 }
 
 func TestLegacyIndexer(t *testing.T, db sql.Database) {

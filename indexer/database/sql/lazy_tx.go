@@ -3,7 +3,9 @@ package sql
 import (
 	"context"
 	"reflect"
+	"time"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
 	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
@@ -69,10 +71,12 @@ func (tx *DelayedTx) Exec(ctx context.Context, sql string, args ...interface{}) 
 }
 
 func (tx *DelayedTx) Commit(ctx context.Context) error {
+	t := time.Now()
 	base, err := tx.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
+	metrics.IndexerMetrics.FreePostgresTimer.Update(time.Since(t))
 	defer func() {
 		if p := recover(); p != nil {
 			rollback(ctx, base)

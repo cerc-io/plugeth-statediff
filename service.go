@@ -817,11 +817,15 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	if params.IncludeReceipts {
 		receipts = sds.BlockChain.GetReceiptsByHash(block.Hash())
 	}
+
+	t := time.Now()
 	tx, err = sds.indexer.PushBlock(block, receipts, totalDifficulty)
 	if err != nil {
 		return err
 	}
+	defer tx.RollbackOnFailure(err)
 
+	// TODO: review/remove the need to sync here
 	var nodeMtx, ipldMtx sync.Mutex
 	nodeSink := func(node types2.StateLeafNode) error {
 		defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.OutputTimer)
@@ -842,9 +846,12 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 		BlockHash:    block.Hash(),
 		BlockNumber:  block.Number(),
 	}, params, nodeSink, ipldSink)
+	if err != nil {
+		return err
+	}
 
-	// TODO this anti-pattern needs to be sorted out eventually
-	if err = tx.Submit(err); err != nil {
+	metrics.IndexerMetrics.StateStoreCodeProcessingTimer.Update(time.Since(t))
+	if err = tx.Submit(); err != nil {
 		return fmt.Errorf("batch transaction submission failed: %w", err)
 	}
 	return nil

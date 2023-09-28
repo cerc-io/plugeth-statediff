@@ -89,3 +89,47 @@ jobs:
           pip install pytest
           pip install -r requirements.txt
           pytest -v -k test_basic_db
+
+  compliance-test:
+    name: Run compliance tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: ./plugeth-statediff
+      - uses: actions/checkout@v3
+        with:
+          repository: cerc-io/eth-statediff-compliance
+          ref: v0.1.0
+          path: ./eth-statediff-compliance
+          token: ${{ secrets.CICD_REPO_TOKEN }}
+      - uses: actions/setup-go@v4
+        with:
+          go-version-file: './eth-statediff-compliance/go.mod'
+          check-latest: true
+      - name: Install jq
+        run: apt-get update && apt-get install -yq jq
+      - name: Set up Gitea access token
+        env:
+          TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
+        run: |
+          git config --global url."https://$TOKEN:@git.vdb.to/".insteadOf https://git.vdb.to/
+
+      - name: Update go.mod for dumpdiff-geth
+        working-directory: ./eth-statediff-compliance/
+        run: ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-geth/
+      - name: Update go.mod for dumpdiff-plugeth
+        working-directory: ./eth-statediff-compliance/
+        run: ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-plugeth/
+      - name: Update go.mod for dumpdiff-plugeth-parallel
+        working-directory: ./eth-statediff-compliance/
+        run: ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-plugeth-parallel/
+      - name: Build tools
+        working-directory: ./eth-statediff-compliance/
+        run: make all
+      - name: Compare output of geth and plugeth
+        working-directory: ./eth-statediff-compliance/
+        run: ./scripts/compare-diffs.sh geth plugeth
+      - name: Compare output of geth and plugeth-parallel
+        working-directory: ./eth-statediff-compliance/
+        run: ./scripts/compare-diffs.sh geth plugeth-parallel

@@ -17,6 +17,7 @@
 package interfaces
 
 import (
+	"context"
 	"math/big"
 	"time"
 
@@ -34,9 +35,12 @@ type StateDiffIndexer interface {
 	CurrentBlock() (*models.HeaderModel, error)
 	HasBlock(hash common.Hash, number uint64) (bool, error)
 	PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (Batch, error)
+	PushHeader(batch Batch, header *types.Header, reward, td *big.Int) (string, error)
 	PushStateNode(tx Batch, stateNode sdtypes.StateLeafNode, headerID string) error
 	PushIPLD(tx Batch, ipld sdtypes.IPLD) error
 	ReportDBMetrics(delay time.Duration, quit <-chan bool)
+
+	BeginTx(number *big.Int, ctx context.Context) Batch
 
 	// Methods used by WatchAddress API/functionality
 	LoadWatchedAddresses() ([]common.Address, error)
@@ -50,7 +54,12 @@ type StateDiffIndexer interface {
 
 // Batch required for indexing data atomically
 type Batch interface {
-	Submit(err error) error
+	// Submit commits the batch transaction
+	Submit() error
+	// BlockNumber is the block number of the header this batch contains
+	BlockNumber() string
+	// RollbackOnFailure rolls back the batch transaction if the error is not nil
+	RollbackOnFailure(error)
 }
 
 // Config used to configure different underlying implementations

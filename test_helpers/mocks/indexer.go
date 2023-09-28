@@ -17,6 +17,7 @@
 package mocks
 
 import (
+	context "context"
 	"math/big"
 	"time"
 
@@ -52,6 +53,10 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	return &batch{}, nil
 }
 
+func (sdi *StateDiffIndexer) PushHeader(batch interfaces.Batch, header *types.Header, reward, td *big.Int) (string, error) {
+	return "", nil
+}
+
 func (sdi *StateDiffIndexer) PushStateNode(txi interfaces.Batch, stateNode sdtypes.StateLeafNode, headerID string) error {
 	return nil
 }
@@ -80,10 +85,21 @@ func (sdi *StateDiffIndexer) ClearWatchedAddresses() error {
 	return nil
 }
 
+func (sdi *StateDiffIndexer) BeginTx(number *big.Int, ctx context.Context) interfaces.Batch {
+	return &batch{}
+}
+
 func (sdi *StateDiffIndexer) Close() error {
 	return nil
 }
 
-func (tx *batch) Submit(err error) error {
+func (tx *batch) RollbackOnFailure(error) {}
+
+func (tx *batch) Submit() error {
 	return nil
+}
+
+// batch.BlockNumber
+func (tx *batch) BlockNumber() string {
+	return "0"
 }

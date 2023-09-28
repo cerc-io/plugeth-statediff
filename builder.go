@@ -27,6 +27,7 @@ import (
 	"time"
 
 	iterutils "github.com/cerc-io/eth-iterator-utils"
+	"github.com/cerc-io/eth-iterator-utils/tracker"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -58,7 +59,7 @@ type Builder interface {
 	WriteStateDiff(Args, Params, sdtypes.StateNodeSink, sdtypes.IPLDSink) error
 }
 
-type StateDiffBuilder struct {
+type builder struct {
 	// state cache is safe for concurrent reads
 	stateCache     adapt.StateView
 	subtrieWorkers uint
@@ -88,8 +89,8 @@ func syncedAppender[T any](to *[]T) func(T) error {
 }
 
 // NewBuilder is used to create a statediff builder
-func NewBuilder(stateCache adapt.StateView) *StateDiffBuilder {
-	return &StateDiffBuilder{
+func NewBuilder(stateCache adapt.StateView) *builder {
+	return &builder{
 		stateCache:     stateCache,
 		subtrieWorkers: defaultSubtrieWorkers,
 	}
@@ -97,7 +98,7 @@ func NewBuilder(stateCache adapt.StateView) *StateDiffBuilder {
 
 // SetSubtrieWorkers sets the number of disjoint subtries to divide among parallel workers.
 // Passing 0 will reset this to the default value.
-func (sdb *StateDiffBuilder) SetSubtrieWorkers(n uint) {
+func (sdb *builder) SetSubtrieWorkers(n uint) {
 	if n == 0 {
 		n = defaultSubtrieWorkers
 	}
@@ -105,7 +106,7 @@ func (sdb *StateDiffBuilder) SetSubtrieWorkers(n uint) {
 }
 
 // BuildStateDiffObject builds a statediff object from two blocks and the provided parameters
-func (sdb *StateDiffBuilder) BuildStateDiffObject(args Args, params Params) (sdtypes.StateObject, error) {
+func (sdb *builder) BuildStateDiffObject(args Args, params Params) (sdtypes.StateObject, error) {
 	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.BuildStateDiffObjectTimer)
 	var stateNodes []sdtypes.StateLeafNode
 	var iplds []sdtypes.IPLD
@@ -122,7 +123,7 @@ func (sdb *StateDiffBuilder) BuildStateDiffObject(args Args, params Params) (sdt
 }
 
 // WriteStateDiff writes a statediff object to output sinks
-func (sdb *StateDiffBuilder) WriteStateDiff(
+func (sdb *builder) WriteStateDiff(
 	args Args, params Params,
 	nodeSink sdtypes.StateNodeSink,
 	ipldSink sdtypes.IPLDSink,
@@ -141,14 +142,16 @@ func (sdb *StateDiffBuilder) WriteStateDiff(
 	subitersB := iterutils.SubtrieIterators(trieb.NodeIterator, uint(sdb.subtrieWorkers))
 
 	logger := log.New("hash", args.BlockHash, "number", args.BlockNumber)
-	// errgroup will cancel if any gr fails
+	// errgroup will cancel if any group fails
 	g, ctx := errgroup.WithContext(context.Background())
 	for i := uint(0); i < sdb.subtrieWorkers; i++ {
 		func(subdiv uint) {
 			g.Go(func() error {
 				a, b := subitersA[subdiv], subitersB[subdiv]
+				it := utils.NewSymmetricDifferenceIterator(a, b)
 				return sdb.processAccounts(ctx,
-					a, b, params.watchedAddressesLeafPaths,
+					it, &it.SymmDiffState,
+					params.watchedAddressesLeafPaths,
 					nodeSink, ipldSink, logger,
 				)
 			})
@@ -157,11 +160,60 @@ func (sdb *StateDiffBuilder) WriteStateDiff(
 	return g.Wait()
 }
 
-// processAccounts processes account creations and deletions, and returns a set of updated
-// existing accounts, indexed by leaf key.
-func (sdb *StateDiffBuilder) processAccounts(
+// WriteStateDiff writes a statediff object to output sinks
+func (sdb *builder) WriteStateSnapshot(
+	stateRoot common.Hash, params Params,
+	nodeSink sdtypes.StateNodeSink,
+	ipldSink sdtypes.IPLDSink,
+	tracker tracker.IteratorTracker,
+) error {
+	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.WriteStateDiffTimer)
+	// Load tries for old and new states
+	tree, err := sdb.stateCache.OpenTrie(stateRoot)
+	if err != nil {
+		return fmt.Errorf("error opening new state trie: %w", err)
+	}
+
+	subiters, _, err := tracker.Restore(tree.NodeIterator)
+	if err != nil {
+		return fmt.Errorf("error restoring iterators: %w", err)
+	}
+	if len(subiters) != 0 {
+		// Completed iterators are not saved by the tracker, so restoring fewer than configured is ok,
+		// but having too many is a problem.
+		if len(subiters) > int(sdb.subtrieWorkers) {
+			return fmt.Errorf("restored too many iterators: expected %d, got %d",
+				sdb.subtrieWorkers, len(subiters))
+		}
+	} else {
+		subiters = iterutils.SubtrieIterators(tree.NodeIterator, uint(sdb.subtrieWorkers))
+		for i := range subiters {
+			subiters[i] = tracker.Tracked(subiters[i])
+		}
+	}
+	// errgroup will cancel if any group fails
+	g, ctx := errgroup.WithContext(context.Background())
+	for i := range subiters {
+		func(subdiv uint) {
+			g.Go(func() error {
+				symdiff := utils.AlwaysBState()
+				return sdb.processAccounts(ctx,
+					subiters[subdiv], &symdiff,
+					params.watchedAddressesLeafPaths,
+					nodeSink, ipldSink, log.DefaultLogger,
+				)
+			})
+		}(uint(i))
+	}
+	return g.Wait()
+}
+
+// processAccounts processes account creations, deletions, and updates
+// the NodeIterator and SymmDiffIterator instances should refer to the same object, will only be used
+func (sdb *builder) processAccounts(
 	ctx context.Context,
-	a, b trie.NodeIterator, watchedAddressesLeafPaths [][]byte,
+	it trie.NodeIterator, symdiff *utils.SymmDiffState,
+	watchedAddressesLeafPaths [][]byte,
 	nodeSink sdtypes.StateNodeSink, ipldSink sdtypes.IPLDSink,
 	logger log.Logger,
 ) error {
@@ -171,9 +223,7 @@ func (sdb *StateDiffBuilder) processAccounts(
 
 	updates := make(accountUpdateMap)
 	// Cache the RLP of the previous node. When we hit a value node this will be the parent blob.
-	var prevBlob []byte
-	it, itCount := utils.NewSymmetricDifferenceIterator(a, b)
-	prevBlob = it.NodeBlob()
+	var prevBlob = it.NodeBlob()
 	for it.Next(true) {
 		select {
 		case <-ctx.Done():
@@ -185,7 +235,7 @@ func (sdb *StateDiffBuilder) processAccounts(
 		if !isWatchedPathPrefix(watchedAddressesLeafPaths, it.Path()) {
 			continue
 		}
-		if it.FromA() { // Node exists in the old trie
+		if symdiff.FromA() { // Node exists in the old trie
 			if it.Leaf() {
 				var account types.StateAccount
 				if err := rlp.DecodeBytes(it.LeafBlob(), &account); err != nil {
@@ -194,7 +244,7 @@ func (sdb *StateDiffBuilder) processAccounts(
 				leafKey := make([]byte, len(it.LeafKey()))
 				copy(leafKey, it.LeafKey())
 
-				if it.CommonPath() {
+				if symdiff.CommonPath() {
 					// If B also contains this leaf node, this is the old state of an updated account.
 					if update, ok := updates[string(leafKey)]; ok {
 						update.oldRoot = account.Root
@@ -212,14 +262,14 @@ func (sdb *StateDiffBuilder) processAccounts(
 			}
 			continue
 		}
-		// Node exists in the new trie
+		// Node exists in the new trie (B)
 		if it.Leaf() {
 			accountW, err := sdb.decodeStateLeaf(it, prevBlob)
 			if err != nil {
 				return err
 			}
 
-			if it.CommonPath() {
+			if symdiff.CommonPath() {
 				// If A also contains this leaf node, this is the new state of an updated account.
 				if update, ok := updates[string(accountW.LeafKey)]; ok {
 					update.new = *accountW
@@ -232,42 +282,41 @@ func (sdb *StateDiffBuilder) processAccounts(
 					return err
 				}
 			}
-		} else {
-			// New trie nodes will be written to blockstore only.
-			// Reminder: this includes leaf nodes, since the geth iterator.Leaf() actually
-			// signifies a "value" node.
-			if it.Hash() == zeroHash {
-				continue
-			}
-			// TODO - this can be handled when value node is (craeted?)
-			nodeVal := make([]byte, len(it.NodeBlob()))
-			copy(nodeVal, it.NodeBlob())
-			// if doing a selective diff, we need to ensure this is a watched path
-			if len(watchedAddressesLeafPaths) > 0 {
-				var elements []interface{}
-				if err := rlp.DecodeBytes(nodeVal, &elements); err != nil {
-					return err
-				}
-				ok, err := isLeaf(elements)
-				if err != nil {
-					return err
-				}
-				if ok {
-					partialPath := utils.CompactToHex(elements[0].([]byte))
-					valueNodePath := append(it.Path(), partialPath...)
-					if !isWatchedPath(watchedAddressesLeafPaths, valueNodePath) {
-						continue
-					}
-				}
-			}
-			if err := ipldSink(sdtypes.IPLD{
-				CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, it.Hash().Bytes()).String(),
-				Content: nodeVal,
-			}); err != nil {
+			continue
+		}
+		// New inner trie nodes will be written to blockstore only.
+		// Reminder: this includes leaf nodes, since the geth iterator.Leaf() actually
+		// signifies a "value" node.
+		if it.Hash() == zeroHash {
+			continue
+		}
+		nodeVal := make([]byte, len(it.NodeBlob()))
+		copy(nodeVal, it.NodeBlob())
+		// if doing a selective diff, we need to ensure this is a watched path
+		if len(watchedAddressesLeafPaths) > 0 {
+			var elements []interface{}
+			if err := rlp.DecodeBytes(nodeVal, &elements); err != nil {
 				return err
 			}
-			prevBlob = nodeVal
+			ok, err := isLeaf(elements)
+			if err != nil {
+				return err
+			}
+			if ok {
+				partialPath := utils.CompactToHex(elements[0].([]byte))
+				valueNodePath := append(it.Path(), partialPath...)
+				if !isWatchedPath(watchedAddressesLeafPaths, valueNodePath) {
+					continue
+				}
+			}
 		}
+		if err := ipldSink(sdtypes.IPLD{
+			CID:     ipld.Keccak256ToCid(ipld.MEthStateTrie, it.Hash().Bytes()).String(),
+			Content: nodeVal,
+		}); err != nil {
+			return err
+		}
+		prevBlob = nodeVal
 	}
 
 	for key, update := range updates {
@@ -287,12 +336,10 @@ func (sdb *StateDiffBuilder) processAccounts(
 			return err
 		}
 	}
-
-	metrics.IndexerMetrics.DifferenceIteratorCounter.Inc(int64(*itCount))
 	return it.Error()
 }
 
-func (sdb *StateDiffBuilder) processAccountDeletion(
+func (sdb *builder) processAccountDeletion(
 	leafKey []byte, account types.StateAccount, nodeSink sdtypes.StateNodeSink,
 ) error {
 	diff := sdtypes.StateLeafNode{
@@ -309,7 +356,7 @@ func (sdb *StateDiffBuilder) processAccountDeletion(
 	return nodeSink(diff)
 }
 
-func (sdb *StateDiffBuilder) processAccountCreation(
+func (sdb *builder) processAccountCreation(
 	accountW *sdtypes.AccountWrapper, ipldSink sdtypes.IPLDSink, nodeSink sdtypes.StateNodeSink,
 ) error {
 	diff := sdtypes.StateLeafNode{
@@ -340,7 +387,7 @@ func (sdb *StateDiffBuilder) processAccountCreation(
 // decodes account at leaf and encodes RLP data to CID
 // reminder: it.Leaf() == true when the iterator is positioned at a "value node" (which is not something
 // that actually exists in an MMPT), therefore we pass the parent node blob as the leaf RLP.
-func (sdb *StateDiffBuilder) decodeStateLeaf(it trie.NodeIterator, parentBlob []byte) (*sdtypes.AccountWrapper, error) {
+func (sdb *builder) decodeStateLeaf(it trie.NodeIterator, parentBlob []byte) (*sdtypes.AccountWrapper, error) {
 	var account types.StateAccount
 	if err := rlp.DecodeBytes(it.LeafBlob(), &account); err != nil {
 		return nil, fmt.Errorf("error decoding account at leaf key %x: %w", it.LeafKey(), err)
@@ -357,7 +404,7 @@ func (sdb *StateDiffBuilder) decodeStateLeaf(it trie.NodeIterator, parentBlob []
 
 // processStorageCreations processes the storage node records for a newly created account
 // i.e. it returns all the storage nodes at this state, since there is no previous state.
-func (sdb *StateDiffBuilder) processStorageCreations(
+func (sdb *builder) processStorageCreations(
 	sr common.Hash, storageSink sdtypes.StorageNodeSink, ipldSink sdtypes.IPLDSink,
 ) error {
 	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.ProcessStorageCreationsTimer)
@@ -394,8 +441,9 @@ func (sdb *StateDiffBuilder) processStorageCreations(
 	return it.Error()
 }
 
-// processStorageUpdates builds the storage diff node objects for all nodes that exist in a different state at B than A
-func (sdb *StateDiffBuilder) processStorageUpdates(
+// processStorageUpdates builds the storage diff node objects for all nodes that exist in a
+// different state at B than A
+func (sdb *builder) processStorageUpdates(
 	oldroot common.Hash, newroot common.Hash,
 	storageSink sdtypes.StorageNodeSink,
 	ipldSink sdtypes.IPLDSink,
@@ -416,7 +464,7 @@ func (sdb *StateDiffBuilder) processStorageUpdates(
 
 	var prevBlob []byte
 	a, b := oldTrie.NodeIterator(nil), newTrie.NodeIterator(nil)
-	it, _ := utils.NewSymmetricDifferenceIterator(a, b)
+	it := utils.NewSymmetricDifferenceIterator(a, b)
 	for it.Next(true) {
 		if it.FromA() {
 			if it.Leaf() && !it.CommonPath() {
@@ -457,7 +505,7 @@ func (sdb *StateDiffBuilder) processStorageUpdates(
 }
 
 // processRemovedAccountStorage builds the "removed" diffs for all the storage nodes for a destroyed account
-func (sdb *StateDiffBuilder) processRemovedAccountStorage(
+func (sdb *builder) processRemovedAccountStorage(
 	sr common.Hash, storageSink sdtypes.StorageNodeSink,
 ) error {
 	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.ProcessRemovedAccountStorageTimer)
@@ -491,7 +539,7 @@ func (sdb *StateDiffBuilder) processRemovedAccountStorage(
 // decodes slot at leaf and encodes RLP data to CID
 // reminder: it.Leaf() == true when the iterator is positioned at a "value node" (which is not something
 // that actually exists in an MMPT), therefore we pass the parent node blob as the leaf RLP.
-func (sdb *StateDiffBuilder) decodeStorageLeaf(it trie.NodeIterator, parentBlob []byte) sdtypes.StorageLeafNode {
+func (sdb *builder) decodeStorageLeaf(it trie.NodeIterator, parentBlob []byte) sdtypes.StorageLeafNode {
 	leafKey := make([]byte, len(it.LeafKey()))
 	copy(leafKey, it.LeafKey())
 	value := make([]byte, len(it.LeafBlob()))

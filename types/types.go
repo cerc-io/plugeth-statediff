@@ -53,7 +53,7 @@ type StateLeafNode struct {
 	StorageDiff    []StorageLeafNode
 }
 
-// StorageLeafNode holds the data for a single storage diff node leaf node
+// StorageLeafNode holds the data for a single storage diff leaf node
 type StorageLeafNode struct {
 	Removed bool
 	Value   []byte

@@ -44,10 +44,6 @@ type Config struct {
 	ConnTimeout     time.Duration
 	LogStatements   bool
 
-	// node info params
-	ID         string
-	ClientName string
-
 	// driver type
 	Driver DriverType
 

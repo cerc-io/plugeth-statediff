@@ -16,14 +16,29 @@
 
 package file
 
+import "github.com/cerc-io/plugeth-statediff/utils/log"
+
 // BatchTx wraps a void with the state necessary for building the tx concurrently during trie difference iteration
 type BatchTx struct {
-	BlockNumber string
-
-	submit func(blockTx *BatchTx, err error) error
+	blockNum   string
+	fileWriter FileWriter
 }
 
 // Submit satisfies indexer.AtomicTx
-func (tx *BatchTx) Submit(err error) error {
-	return tx.submit(tx, err)
+func (tx *BatchTx) Submit() error {
+	tx.fileWriter.Flush()
+	return nil
+}
+
+func (tx *BatchTx) BlockNumber() string {
+	return tx.blockNum
+}
+
+func (tx *BatchTx) RollbackOnFailure(err error) {
+	if p := recover(); p != nil {
+		log.Info("panic detected before tx submission, but rollback not supported", "panic", p)
+		panic(p)
+	} else if err != nil {
+		log.Info("error detected before tx submission, but rollback not supported", "error", err)
+	}
 }

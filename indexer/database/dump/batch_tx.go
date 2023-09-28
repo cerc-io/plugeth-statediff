@@ -19,26 +19,55 @@ package dump
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
-
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 // BatchTx wraps a void with the state necessary for building the tx concurrently during trie difference iteration
 type BatchTx struct {
-	BlockNumber string
-	dump        io.Writer
-	quit        chan struct{}
-	iplds       chan models.IPLDModel
-	ipldCache   models.IPLDBatch
-
-	submit func(blockTx *BatchTx, err error) error
+	blockNum  string
+	dump      io.Writer
+	quit      chan struct{}
+	iplds     chan models.IPLDModel
+	ipldCache models.IPLDBatch
 }
 
-// Submit satisfies indexer.AtomicTx
-func (tx *BatchTx) Submit(err error) error {
-	return tx.submit(tx, err)
+func NewBatch(number *big.Int, dest io.Writer) *BatchTx {
+	batch := &BatchTx{
+		blockNum:  number.String(),
+		dump:      dest,
+		iplds:     make(chan models.IPLDModel),
+		quit:      make(chan struct{}),
+		ipldCache: models.IPLDBatch{},
+	}
+	go batch.cache()
+	return batch
+}
+
+func (self *BatchTx) Submit() error {
+	close(self.quit)
+	close(self.iplds)
+
+	if err := self.flush(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *BatchTx) BlockNumber() string {
+	return tx.blockNum
+}
+
+func (tx *BatchTx) RollbackOnFailure(err error) {
+	if p := recover(); p != nil {
+		log.Info("panic detected before tx submission, but rollback not supported", "panic", p)
+		panic(p)
+	} else if err != nil {
+		log.Info("error detected before tx submission, but rollback not supported", "error", err)
+	}
 }
 
 func (tx *BatchTx) flush() error {
@@ -65,7 +94,7 @@ func (tx *BatchTx) cache() {
 
 func (tx *BatchTx) cacheDirect(key string, value []byte) {
 	tx.iplds <- models.IPLDModel{
-		BlockNumber: tx.BlockNumber,
+		BlockNumber: tx.BlockNumber(),
 		Key:         key,
 		Data:        value,
 	}
@@ -73,7 +102,7 @@ func (tx *BatchTx) cacheDirect(key string, value []byte) {
 
 func (tx *BatchTx) cacheIPLD(i ipld.IPLD) {
 	tx.iplds <- models.IPLDModel{
-		BlockNumber: tx.BlockNumber,
+		BlockNumber: tx.BlockNumber(),
 		Key:         i.Cid().String(),
 		Data:        i.RawData(),
 	}

@@ -45,37 +45,33 @@ func TestSymmetricDifferenceIterator(t *testing.T) {
 	t.Run("with no difference", func(t *testing.T) {
 		db := trie.NewDatabase(rawdb.NewMemoryDatabase())
 		triea := trie.NewEmpty(db)
-		di, count := utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), triea.NodeIterator(nil))
+		di := utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), triea.NodeIterator(nil))
 		for di.Next(true) {
 			t.Errorf("iterator should not yield any elements")
 		}
-		assert.Equal(t, 0, *count)
+		assert.Equal(t, 0, di.Count())
 
 		triea.MustUpdate([]byte("foo"), []byte("bar"))
-		di, count = utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), triea.NodeIterator(nil))
+		di = utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), triea.NodeIterator(nil))
 		for di.Next(true) {
 			t.Errorf("iterator should not yield any elements")
 		}
-		assert.Equal(t, 2, *count)
+		// two nodes visited: the leaf (value) and its parent
+		assert.Equal(t, 2, di.Count())
 
-		// TODO will fail until fixed https://github.com/ethereum/go-ethereum/pull/27838
 		trieb := trie.NewEmpty(db)
-		di, count = utils.NewSymmetricDifferenceIterator(
-			triea.NodeIterator([]byte("jars")),
-			trieb.NodeIterator(nil))
+		di = utils.NewSymmetricDifferenceIterator(triea.NodeIterator([]byte("jars")), trieb.NodeIterator(nil))
 		for di.Next(true) {
-			t.Errorf("iterator should not yield any elements, but got key %s", di.Path())
+			t.Errorf("iterator should not yield any elements")
 		}
-		assert.Equal(t, 0, *count)
+		assert.Equal(t, 0, di.Count())
 
-		// // TODO will fail until merged: https://github.com/ethereum/go-ethereum/pull/27838
-		// di, count = utils.NewSymmetricDifferenceIterator(
-		// 	triea.NodeIterator([]byte("food")),
-		// 	trieb.NodeIterator(nil))
+		// TODO will fail until merged: https://github.com/ethereum/go-ethereum/pull/27838
+		// di, aux = utils.NewSymmetricDifferenceIterator(triea.NodeIterator([]byte("food")), trieb.NodeIterator(nil))
 		// for di.Next(true) {
-		// 	t.Errorf("iterator should not yield any elements, but got key %s", di.Path())
+		// 	t.Errorf("iterator should not yield any elements")
 		// }
-		// assert.Equal(t, 0, *count)
+		// assert.Equal(t, 0, di.Count())
 	})
 
 	t.Run("small difference", func(t *testing.T) {
@@ -86,7 +82,7 @@ func TestSymmetricDifferenceIterator(t *testing.T) {
 		trieb := trie.NewEmpty(dbb)
 		trieb.MustUpdate([]byte("foo"), []byte("bar"))
 
-		di, count := utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), trieb.NodeIterator(nil))
+		di := utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), trieb.NodeIterator(nil))
 		leaves := 0
 		for di.Next(true) {
 			if di.Leaf() {
@@ -97,10 +93,10 @@ func TestSymmetricDifferenceIterator(t *testing.T) {
 			}
 		}
 		assert.Equal(t, 1, leaves)
-		assert.Equal(t, 2, *count)
+		assert.Equal(t, 2, di.Count())
 
 		trieb.MustUpdate([]byte("quux"), []byte("bars"))
-		di, count = utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), trieb.NodeIterator([]byte("quux")))
+		di = utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), trieb.NodeIterator([]byte("quux")))
 		leaves = 0
 		for di.Next(true) {
 			if di.Leaf() {
@@ -111,7 +107,7 @@ func TestSymmetricDifferenceIterator(t *testing.T) {
 			}
 		}
 		assert.Equal(t, 1, leaves)
-		assert.Equal(t, 1, *count)
+		assert.Equal(t, 1, di.Count())
 	})
 
 	dba := trie.NewDatabase(rawdb.NewMemoryDatabase())
@@ -128,7 +124,7 @@ func TestSymmetricDifferenceIterator(t *testing.T) {
 	onlyA := make(map[string]string)
 	onlyB := make(map[string]string)
 	var deletions, creations []string
-	it, _ := utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), trieb.NodeIterator(nil))
+	it := utils.NewSymmetricDifferenceIterator(triea.NodeIterator(nil), trieb.NodeIterator(nil))
 	for it.Next(true) {
 		if !it.Leaf() {
 			continue
@@ -209,7 +205,7 @@ func TestCompareDifferenceIterators(t *testing.T) {
 		pathsA = append(pathsA, itAonly.Path())
 	}
 
-	itSym, _ := utils.NewSymmetricDifferenceIterator(treeA.NodeIterator(nil), treeB.NodeIterator(nil))
+	itSym := utils.NewSymmetricDifferenceIterator(treeA.NodeIterator(nil), treeB.NodeIterator(nil))
 	var idxA, idxB int
 	for itSym.Next(true) {
 		if itSym.FromA() {

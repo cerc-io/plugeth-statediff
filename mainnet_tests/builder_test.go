@@ -444,7 +444,7 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 	}
 	params := statediff.Params{}
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		// note that block0 (genesis) has over 1000 nodes due to the pre-allocation for the crowd-sale
 		// it is not feasible to write a unit test of that size at this time
 		{
@@ -624,7 +624,7 @@ func TestBuilderOnMainnetBlocks(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block1: block1RootBranchNode,
 		block2: block2RootBranchNode,

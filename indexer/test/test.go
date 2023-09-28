@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
 	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
 	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
@@ -48,7 +47,7 @@ func SetupTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := tx.Submit(err); err != nil {
+		if err := tx.Submit(); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -61,11 +60,7 @@ func SetupTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
 		require.NoError(t, err)
 	}
 
-	if batchTx, ok := tx.(*sql.BatchTx); ok {
-		require.Equal(t, mocks.BlockNumber.String(), batchTx.BlockNumber)
-	} else if batchTx, ok := tx.(*file.BatchTx); ok {
-		require.Equal(t, mocks.BlockNumber.String(), batchTx.BlockNumber)
-	}
+	require.Equal(t, mocks.BlockNumber.String(), tx.BlockNumber())
 }
 
 func DoTestPublishAndIndexHeaderIPLDs(t *testing.T, db sql.Database) {
@@ -547,13 +542,9 @@ func SetupTestDataNonCanonical(t *testing.T, ind interfaces.StateDiffIndexer) {
 		require.NoError(t, err)
 	}
 
-	if batchTx, ok := tx1.(*sql.BatchTx); ok {
-		require.Equal(t, mocks.BlockNumber.String(), batchTx.BlockNumber)
-	} else if batchTx, ok := tx1.(*file.BatchTx); ok {
-		require.Equal(t, mocks.BlockNumber.String(), batchTx.BlockNumber)
-	}
+	require.Equal(t, mocks.BlockNumber.String(), tx1.BlockNumber())
 
-	if err := tx1.Submit(err); err != nil {
+	if err := tx1.Submit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -572,13 +563,9 @@ func SetupTestDataNonCanonical(t *testing.T, ind interfaces.StateDiffIndexer) {
 		require.NoError(t, err)
 	}
 
-	if tx, ok := tx2.(*sql.BatchTx); ok {
-		require.Equal(t, mocks.BlockNumber.String(), tx.BlockNumber)
-	} else if tx, ok := tx2.(*sql.BatchTx); ok {
-		require.Equal(t, mocks.BlockNumber.String(), tx.BlockNumber)
-	}
+	require.Equal(t, mocks.BlockNumber.String(), tx2.BlockNumber())
 
-	if err := tx2.Submit(err); err != nil {
+	if err := tx2.Submit(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -597,13 +584,9 @@ func SetupTestDataNonCanonical(t *testing.T, ind interfaces.StateDiffIndexer) {
 		require.NoError(t, err)
 	}
 
-	if batchTx, ok := tx3.(*sql.BatchTx); ok {
-		require.Equal(t, mocks.Block2Number.String(), batchTx.BlockNumber)
-	} else if batchTx, ok := tx3.(*file.BatchTx); ok {
-		require.Equal(t, mocks.Block2Number.String(), batchTx.BlockNumber)
-	}
+	require.Equal(t, mocks.Block2Number.String(), tx3.BlockNumber())
 
-	if err := tx3.Submit(err); err != nil {
+	if err := tx3.Submit(); err != nil {
 		t.Fatal(err)
 	}
 }

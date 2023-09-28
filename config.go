@@ -48,16 +48,16 @@ type Config struct {
 	SubtrieWorkers uint
 	// Should the statediff service wait until geth has synced to the head of the blockchain?
 	WaitForSync bool
-	// Context used during DB initialization
+	// Context passed to all DB method calls
 	Context context.Context
 }
 
 // Params contains config parameters for the state diff builder
 type Params struct {
-	IncludeBlock              bool
+	IncludeBlock              bool // TODO: not used in write-requests
 	IncludeReceipts           bool
 	IncludeTD                 bool
-	IncludeCode               bool
+	IncludeCode               bool // TODO: not used by anything?
 	WatchedAddresses          []common.Address
 	watchedAddressesLeafPaths [][]byte
 }

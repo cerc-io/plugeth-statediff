@@ -17,6 +17,7 @@
 package file
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -37,6 +38,7 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
+	"github.com/cerc-io/plugeth-statediff/indexer/node"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 	"github.com/cerc-io/plugeth-statediff/utils/log"
@@ -61,7 +63,7 @@ type StateDiffIndexer struct {
 }
 
 // NewStateDiffIndexer creates a void implementation of interfaces.StateDiffIndexer
-func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config) (*StateDiffIndexer, error) {
+func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config, nodeInfo node.Info) (*StateDiffIndexer, error) {
 	var err error
 	var writer FileWriter
 
@@ -114,12 +116,12 @@ func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config) (*State
 
 	wg := new(sync.WaitGroup)
 	writer.Loop()
-	writer.upsertNode(config.NodeInfo)
+	writer.upsertNode(nodeInfo)
 
 	return &StateDiffIndexer{
 		fileWriter:  writer,
 		chainConfig: chainConfig,
-		nodeID:      config.NodeInfo.ID,
+		nodeID:      nodeInfo.ID,
 		wg:          wg,
 	}, nil
 }
@@ -130,7 +132,7 @@ func (sdi *StateDiffIndexer) ReportDBMetrics(time.Duration, <-chan bool) {}
 // PushBlock pushes and indexes block data in sql, except state & storage nodes (includes header, uncles, transactions & receipts)
 // Returns an initiated DB transaction which must be Closed via defer to commit or rollback
 func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (interfaces.Batch, error) {
-	start, t := time.Now(), time.Now()
+	t := time.Now()
 	blockHash := block.Hash()
 	blockHashStr := blockHash.String()
 	height := block.NumberU64()
@@ -142,7 +144,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}
 
 	// Generate the block iplds
-	headerNode, txNodes, rctNodes, logNodes, err := ipld.FromBlockAndReceipts(block, receipts)
+	txNodes, rctNodes, logNodes, err := ipld.FromBlockAndReceipts(block, receipts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating IPLD nodes from block and receipts: %v", err)
 	}
@@ -159,32 +161,19 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	} else {
 		reward = shared.CalcEthBlockReward(block.Header(), block.Uncles(), block.Transactions(), receipts)
 	}
-	t = time.Now()
 
 	blockTx := &BatchTx{
-		BlockNumber: block.Number().String(),
-		submit: func(self *BatchTx, err error) error {
-			tDiff := time.Since(t)
-			metrics.IndexerMetrics.StateStoreCodeProcessingTimer.Update(tDiff)
-			traceMsg += fmt.Sprintf("state, storage, and code storage processing time: %s\r\n", tDiff.String())
-			t = time.Now()
-			sdi.fileWriter.Flush()
-			tDiff = time.Since(t)
-			metrics.IndexerMetrics.PostgresCommitTimer.Update(tDiff)
-			traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", tDiff.String())
-			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Since(start).String())
-			log.Trace(traceMsg)
-			return err
-		},
+		blockNum:   block.Number().String(),
+		fileWriter: sdi.fileWriter,
 	}
-	tDiff := time.Since(t)
-	metrics.IndexerMetrics.FreePostgresTimer.Update(tDiff)
-	traceMsg += fmt.Sprintf("time spent waiting for free postgres tx: %s:\r\n", tDiff.String())
 	t = time.Now()
 
 	// write header, collect headerID
-	headerID := sdi.processHeader(block.Header(), headerNode, reward, totalDifficulty)
-	tDiff = time.Since(t)
+	headerID, err := sdi.PushHeader(blockTx, block.Header(), reward, totalDifficulty)
+	if err != nil {
+		return nil, err
+	}
+	tDiff := time.Since(t)
 	metrics.IndexerMetrics.HeaderProcessingTimer.Update(tDiff)
 	traceMsg += fmt.Sprintf("header processing time: %s\r\n", tDiff.String())
 	t = time.Now()
@@ -217,9 +206,14 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	return blockTx, err
 }
 
-// processHeader write a header IPLD insert SQL stmt to a file
+// PushHeader write a header IPLD insert SQL stmt to a file
 // it returns the headerID
-func (sdi *StateDiffIndexer) processHeader(header *types.Header, headerNode ipld.IPLD, reward, td *big.Int) string {
+func (sdi *StateDiffIndexer) PushHeader(_ interfaces.Batch, header *types.Header, reward, td *big.Int) (string, error) {
+	// Process the header
+	headerNode, err := ipld.NewEthHeader(header)
+	if err != nil {
+		return "", err
+	}
 	sdi.fileWriter.upsertIPLDNode(header.Number.String(), headerNode)
 
 	headerID := header.Hash().String()
@@ -240,7 +234,7 @@ func (sdi *StateDiffIndexer) processHeader(header *types.Header, headerNode ipld
 		Coinbase:        header.Coinbase.String(),
 		Canonical:       true,
 	})
-	return headerID
+	return headerID, nil
 }
 
 // processUncles publishes and indexes uncle IPLDs in Postgres
@@ -374,20 +368,16 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(args processArgs) error {
 }
 
 // PushStateNode writes a state diff node object (including any child storage nodes) IPLD insert SQL stmt to a file
-func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdtypes.StateLeafNode, headerID string) error {
-	tx, ok := batch.(*BatchTx)
-	if !ok {
-		return fmt.Errorf("file: batch is expected to be of type %T, got %T", &BatchTx{}, batch)
-	}
+func (sdi *StateDiffIndexer) PushStateNode(tx interfaces.Batch, stateNode sdtypes.StateLeafNode, headerID string) error {
 	// publish the state node
 	var stateModel models.StateNodeModel
 	if stateNode.Removed {
 		if atomic.LoadUint32(&sdi.removedCacheFlag) == 0 {
 			atomic.StoreUint32(&sdi.removedCacheFlag, 1)
-			sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber, shared.RemovedNodeStateCID, []byte{})
+			sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber(), shared.RemovedNodeStateCID, []byte{})
 		}
 		stateModel = models.StateNodeModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			HeaderID:    headerID,
 			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			CID:         shared.RemovedNodeStateCID,
@@ -395,7 +385,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		}
 	} else {
 		stateModel = models.StateNodeModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			HeaderID:    headerID,
 			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			CID:         stateNode.AccountWrapper.CID,
@@ -415,10 +405,10 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		if storageNode.Removed {
 			if atomic.LoadUint32(&sdi.removedCacheFlag) == 0 {
 				atomic.StoreUint32(&sdi.removedCacheFlag, 1)
-				sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber, shared.RemovedNodeStorageCID, []byte{})
+				sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber(), shared.RemovedNodeStorageCID, []byte{})
 			}
 			storageModel := models.StorageNodeModel{
-				BlockNumber: tx.BlockNumber,
+				BlockNumber: tx.BlockNumber(),
 				HeaderID:    headerID,
 				StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 				StorageKey:  common.BytesToHash(storageNode.LeafKey).String(),
@@ -430,7 +420,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 			continue
 		}
 		storageModel := models.StorageNodeModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			HeaderID:    headerID,
 			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			StorageKey:  common.BytesToHash(storageNode.LeafKey).String(),
@@ -445,12 +435,8 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 }
 
 // PushIPLD writes iplds to ipld.blocks
-func (sdi *StateDiffIndexer) PushIPLD(batch interfaces.Batch, ipld sdtypes.IPLD) error {
-	tx, ok := batch.(*BatchTx)
-	if !ok {
-		return fmt.Errorf("file: batch is expected to be of type %T, got %T", &BatchTx{}, batch)
-	}
-	sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber, ipld.CID, ipld.Content)
+func (sdi *StateDiffIndexer) PushIPLD(tx interfaces.Batch, ipld sdtypes.IPLD) error {
+	sdi.fileWriter.upsertIPLDDirect(tx.BlockNumber(), ipld.CID, ipld.Content)
 	return nil
 }
 
@@ -470,6 +456,13 @@ func (sdi *StateDiffIndexer) DetectGaps(beginBlockNumber uint64, endBlockNumber 
 // In the "file" case this is presumed to be false.
 func (sdi *StateDiffIndexer) HasBlock(hash common.Hash, number uint64) (bool, error) {
 	return false, nil
+}
+
+func (sdi *StateDiffIndexer) BeginTx(number *big.Int, _ context.Context) interfaces.Batch {
+	return &BatchTx{
+		blockNum:   number.String(),
+		fileWriter: sdi.fileWriter,
+	}
 }
 
 // Close satisfies io.Closer

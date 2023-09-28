@@ -17,6 +17,7 @@ func init() {
 	// The plugeth logger is only initialized with the geth runtime,
 	// but tests expect to have a logger available, so default to this.
 	DefaultLogger = TestLogger
+	TestLogger.SetLevel(int(log15.LvlInfo))
 }
 
 func Trace(m string, a ...interface{}) { DefaultLogger.Trace(m, a...) }

@@ -47,8 +47,12 @@ func InitializeNode(stack core.Node, b core.Backend) {
 			ClientName:   serviceConfig.ClientName,
 		}
 		var err error
-		_, indexer, err = ind.NewStateDiffIndexer(serviceConfig.Context,
-			adapt.ChainConfig(backend.ChainConfig()), info, serviceConfig.IndexerConfig)
+		_, indexer, err = ind.NewStateDiffIndexer(
+			serviceConfig.Context,
+			adapt.ChainConfig(backend.ChainConfig()),
+			info,
+			serviceConfig.IndexerConfig,
+		)
 		if err != nil {
 			log.Error("failed to construct indexer", "error", err)
 		}

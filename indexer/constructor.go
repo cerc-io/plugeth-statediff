@@ -33,7 +33,16 @@ import (
 )
 
 // NewStateDiffIndexer creates and returns an implementation of the StateDiffIndexer interface.
-func NewStateDiffIndexer(ctx context.Context, chainConfig *params.ChainConfig, nodeInfo node.Info, config interfaces.Config) (sql.Database, interfaces.StateDiffIndexer, error) {
+func NewStateDiffIndexer(
+	ctx context.Context,
+	chainConfig *params.ChainConfig,
+	nodeInfo node.Info,
+	config interfaces.Config,
+) (
+	sql.Database,
+	interfaces.StateDiffIndexer,
+	error,
+) {
 	switch config.Type() {
 	case shared.FILE:
 		log.Info("Starting statediff service in SQL file writing mode")
@@ -41,8 +50,7 @@ func NewStateDiffIndexer(ctx context.Context, chainConfig *params.ChainConfig, n
 		if !ok {
 			return nil, nil, fmt.Errorf("file config is not the correct type: got %T, expected %T", config, file.Config{})
 		}
-		fc.NodeInfo = nodeInfo
-		ind, err := file.NewStateDiffIndexer(chainConfig, fc)
+		ind, err := file.NewStateDiffIndexer(chainConfig, fc, nodeInfo)
 		return nil, ind, err
 	case shared.POSTGRES:
 		log.Info("Starting statediff service in Postgres writing mode")

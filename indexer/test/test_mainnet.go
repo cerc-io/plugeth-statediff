@@ -19,8 +19,6 @@ package test
 import (
 	"testing"
 
-	"github.com/cerc-io/plugeth-statediff/indexer/database/file"
-	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 	"github.com/cerc-io/plugeth-statediff/indexer/interfaces"
 	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -36,7 +34,7 @@ func TestBlock(t *testing.T, ind interfaces.StateDiffIndexer, testBlock *types.B
 	require.NoError(t, err)
 
 	defer func() {
-		if err := tx.Submit(err); err != nil {
+		if err := tx.Submit(); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -45,9 +43,5 @@ func TestBlock(t *testing.T, ind interfaces.StateDiffIndexer, testBlock *types.B
 		require.NoError(t, err)
 	}
 
-	if batchTx, ok := tx.(*sql.BatchTx); ok {
-		require.Equal(t, testBlock.Number().String(), batchTx.BlockNumber)
-	} else if batchTx, ok := tx.(*file.BatchTx); ok {
-		require.Equal(t, testBlock.Number().String(), batchTx.BlockNumber)
-	}
+	require.Equal(t, testBlock.Number().String(), tx.BlockNumber())
 }

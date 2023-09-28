@@ -41,7 +41,7 @@ func setupIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(mocks.TestChainConfig, file.SQLTestConfig)
+	ind, err = file.NewStateDiffIndexer(mocks.TestChainConfig, file.SQLTestConfig, test.LegacyNodeInfo)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()

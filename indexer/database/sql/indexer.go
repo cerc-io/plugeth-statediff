@@ -39,7 +39,6 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
-	"github.com/cerc-io/plugeth-statediff/utils/log"
 )
 
 var _ interfaces.StateDiffIndexer = &StateDiffIndexer{}
@@ -82,24 +81,26 @@ func (sdi *StateDiffIndexer) ReportDBMetrics(delay time.Duration, quit <-chan bo
 // PushBlock pushes and indexes block data in sql, except state & storage nodes (includes header, uncles, transactions & receipts)
 // Returns an initiated DB transaction which must be Closed via defer to commit or rollback
 func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (interfaces.Batch, error) {
-	start, t := time.Now(), time.Now()
+	t := time.Now()
 	blockHash := block.Hash()
 	height := block.NumberU64()
-	traceMsg := fmt.Sprintf("indexer stats for statediff at %d with hash %s:\r\n", height, blockHash)
 	transactions := block.Transactions()
+	var err error
+
 	// Derive any missing fields
 	if err := receipts.DeriveFields(sdi.chainConfig, blockHash, height, block.BaseFee(), transactions); err != nil {
 		return nil, err
 	}
 
 	// Generate the block iplds
-	headerNode, txNodes, rctNodes, logNodes, err := ipld.FromBlockAndReceipts(block, receipts)
+	txNodes, rctNodes, logNodes, err := ipld.FromBlockAndReceipts(block, receipts)
 	if err != nil {
-		return nil, fmt.Errorf("error creating IPLD nodes from block and receipts: %v", err)
+		return nil, fmt.Errorf("error creating IPLD nodes from block and receipts: %w", err)
 	}
 
 	if len(txNodes) != len(rctNodes) {
-		return nil, fmt.Errorf("expected number of transactions (%d), receipts (%d)", len(txNodes), len(rctNodes))
+		return nil, fmt.Errorf("expected number of transactions (%d) does not match number of receipts (%d)",
+			len(txNodes), len(rctNodes))
 	}
 
 	// Calculate reward
@@ -108,99 +109,35 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	if sdi.chainConfig.Clique != nil {
 		reward = big.NewInt(0)
 	} else {
-		reward = shared.CalcEthBlockReward(block.Header(), block.Uncles(), block.Transactions(), receipts)
+		reward = shared.CalcEthBlockReward(block.Header(), block.Uncles(), transactions, receipts)
 	}
 	t = time.Now()
 
 	// Begin new DB tx for everything
-	tx := NewDelayedTx(sdi.dbWriter.db)
-	defer func() {
-		if p := recover(); p != nil {
-			rollback(sdi.ctx, tx)
-			panic(p)
-		} else if err != nil {
-			rollback(sdi.ctx, tx)
-		}
-	}()
-	blockTx := &BatchTx{
-		removedCacheFlag: new(uint32),
-		ctx:              sdi.ctx,
-		BlockNumber:      block.Number().String(),
-		stm:              sdi.dbWriter.db.InsertIPLDsStm(),
-		iplds:            make(chan models.IPLDModel),
-		quit:             make(chan (chan<- struct{})),
-		ipldCache: models.IPLDBatch{
-			BlockNumbers: make([]string, 0, startingCacheCapacity),
-			Keys:         make([]string, 0, startingCacheCapacity),
-			Values:       make([][]byte, 0, startingCacheCapacity),
-		},
-		dbtx: tx,
-		// handle transaction commit or rollback for any return case
-		submit: func(self *BatchTx, err error) error {
-			defer func() {
-				confirm := make(chan struct{})
-				self.quit <- confirm
-				close(self.quit)
-				<-confirm
-				close(self.iplds)
-			}()
-			if p := recover(); p != nil {
-				log.Info("panic detected before tx submission, rolling back the tx", "panic", p)
-				rollback(sdi.ctx, tx)
-				panic(p)
-			} else if err != nil {
-				log.Info("error detected before tx submission, rolling back the tx", "error", err)
-				rollback(sdi.ctx, tx)
-			} else {
-				tDiff := time.Since(t)
-				metrics2.IndexerMetrics.StateStoreCodeProcessingTimer.Update(tDiff)
-				traceMsg += fmt.Sprintf("state, storage, and code storage processing time: %s\r\n", tDiff)
-				t = time.Now()
-				if err := self.flush(); err != nil {
-					rollback(sdi.ctx, tx)
-					traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Since(start))
-					log.Debug(traceMsg)
-					return err
-				}
-				err = tx.Commit(sdi.ctx)
-				tDiff = time.Since(t)
-				metrics2.IndexerMetrics.PostgresCommitTimer.Update(tDiff)
-				traceMsg += fmt.Sprintf("postgres transaction commit duration: %s\r\n", tDiff)
-			}
-			traceMsg += fmt.Sprintf(" TOTAL PROCESSING DURATION: %s\r\n", time.Since(start))
-			log.Debug(traceMsg)
-			return err
-		},
-	}
-	go blockTx.cache()
-
-	tDiff := time.Since(t)
-	metrics2.IndexerMetrics.FreePostgresTimer.Update(tDiff)
-
-	traceMsg += fmt.Sprintf("time spent waiting for free postgres tx: %s:\r\n", tDiff)
-	t = time.Now()
+	batch := NewBatch(
+		sdi.dbWriter.db.InsertIPLDsStm(), sdi.ctx,
+		block.Number(),
+		NewDelayedTx(sdi.dbWriter.db),
+	)
+	// handle transaction rollback for failures in this scope
+	defer batch.RollbackOnFailure(err)
 
 	// Publish and index header, collect headerID
-	var headerID string
-	headerID, err = sdi.processHeader(blockTx, block.Header(), headerNode, reward, totalDifficulty)
+	headerID, err := sdi.PushHeader(batch, block.Header(), reward, totalDifficulty)
 	if err != nil {
 		return nil, err
 	}
-	tDiff = time.Since(t)
-	metrics2.IndexerMetrics.HeaderProcessingTimer.Update(tDiff)
-	traceMsg += fmt.Sprintf("header processing time: %s\r\n", tDiff)
+	metrics2.IndexerMetrics.HeaderProcessingTimer.Update(time.Since(t))
 	t = time.Now()
 	// Publish and index uncles
-	err = sdi.processUncles(blockTx, headerID, block.Number(), block.UncleHash(), block.Uncles())
+	err = sdi.processUncles(batch, headerID, block.Number(), block.UncleHash(), block.Uncles())
 	if err != nil {
 		return nil, err
 	}
-	tDiff = time.Since(t)
-	metrics2.IndexerMetrics.UncleProcessingTimer.Update(tDiff)
-	traceMsg += fmt.Sprintf("uncle processing time: %s\r\n", tDiff)
+	metrics2.IndexerMetrics.UncleProcessingTimer.Update(time.Since(t))
 	t = time.Now()
 	// Publish and index receipts and txs
-	err = sdi.processReceiptsAndTxs(blockTx, processArgs{
+	err = sdi.processReceiptsAndTxs(batch, processArgs{
 		headerID:    headerID,
 		blockNumber: block.Number(),
 		receipts:    receipts,
@@ -212,12 +149,9 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	if err != nil {
 		return nil, err
 	}
-	tDiff = time.Since(t)
-	metrics2.IndexerMetrics.TxAndRecProcessingTimer.Update(tDiff)
-	traceMsg += fmt.Sprintf("tx and receipt processing time: %s\r\n", tDiff)
-	t = time.Now()
+	metrics2.IndexerMetrics.TxAndRecProcessingTimer.Update(time.Since(t))
 
-	return blockTx, err
+	return batch, err
 }
 
 // CurrentBlock returns the HeaderModel of the highest existing block in the database.
@@ -230,9 +164,18 @@ func (sdi *StateDiffIndexer) DetectGaps(beginBlockNumber uint64, endBlockNumber 
 	return sdi.dbWriter.detectGaps(beginBlockNumber, endBlockNumber)
 }
 
-// processHeader publishes and indexes a header IPLD in Postgres
+// PushHeader publishes and indexes a header IPLD in Postgres
 // it returns the headerID
-func (sdi *StateDiffIndexer) processHeader(tx *BatchTx, header *types.Header, headerNode ipld.IPLD, reward, td *big.Int) (string, error) {
+func (sdi *StateDiffIndexer) PushHeader(batch interfaces.Batch, header *types.Header, reward, td *big.Int) (string, error) {
+	tx, ok := batch.(*BatchTx)
+	if !ok {
+		return "", fmt.Errorf("sql: batch is expected to be of type %T, got %T", &BatchTx{}, batch)
+	}
+	// Process the header
+	headerNode, err := ipld.NewEthHeader(header)
+	if err != nil {
+		return "", err
+	}
 	tx.cacheIPLD(headerNode)
 
 	headerID := header.Hash().String()
@@ -406,7 +349,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 	if stateNode.Removed {
 		tx.cacheRemoved(shared.RemovedNodeStateCID, []byte{})
 		stateModel = models.StateNodeModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			HeaderID:    headerID,
 			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			CID:         shared.RemovedNodeStateCID,
@@ -414,7 +357,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		}
 	} else {
 		stateModel = models.StateNodeModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			HeaderID:    headerID,
 			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			CID:         stateNode.AccountWrapper.CID,
@@ -436,7 +379,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 		if storageNode.Removed {
 			tx.cacheRemoved(shared.RemovedNodeStorageCID, []byte{})
 			storageModel := models.StorageNodeModel{
-				BlockNumber: tx.BlockNumber,
+				BlockNumber: tx.BlockNumber(),
 				HeaderID:    headerID,
 				StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 				StorageKey:  common.BytesToHash(storageNode.LeafKey).String(),
@@ -450,7 +393,7 @@ func (sdi *StateDiffIndexer) PushStateNode(batch interfaces.Batch, stateNode sdt
 			continue
 		}
 		storageModel := models.StorageNodeModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			HeaderID:    headerID,
 			StateKey:    common.BytesToHash(stateNode.AccountWrapper.LeafKey).String(),
 			StorageKey:  common.BytesToHash(storageNode.LeafKey).String(),
@@ -479,6 +422,15 @@ func (sdi *StateDiffIndexer) PushIPLD(batch interfaces.Batch, ipld sdtypes.IPLD)
 // HasBlock checks whether the indicated block already exists in the database.
 func (sdi *StateDiffIndexer) HasBlock(hash common.Hash, number uint64) (bool, error) {
 	return sdi.dbWriter.hasHeader(hash, number)
+}
+
+func (sdi *StateDiffIndexer) BeginTx(number *big.Int, ctx context.Context) interfaces.Batch {
+	return NewBatch(
+		sdi.dbWriter.db.InsertIPLDsStm(),
+		ctx,
+		number,
+		NewDelayedTx(sdi.dbWriter.db),
+	)
 }
 
 // Close satisfies io.Closer

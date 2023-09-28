@@ -22,23 +22,17 @@ import (
 
 // FromBlockAndReceipts takes a block and processes it
 // to return it a set of IPLD nodes for further processing.
-func FromBlockAndReceipts(block *types.Block, receipts []*types.Receipt) (*EthHeader, []*EthTx, []*EthReceipt, [][]*EthLog, error) {
-	// Process the header
-	headerNode, err := NewEthHeader(block.Header())
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
+func FromBlockAndReceipts(block *types.Block, receipts []*types.Receipt) ([]*EthTx, []*EthReceipt, [][]*EthLog, error) {
 	// Process the txs
 	txNodes, err := processTransactions(block.Transactions())
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Process the receipts and logs
 	rctNodes, logNodes, err := processReceiptsAndLogs(receipts)
 
-	return headerNode, txNodes, rctNodes, logNodes, err
+	return txNodes, rctNodes, logNodes, err
 }
 
 // processTransactions will take the found transactions in a parsed block body

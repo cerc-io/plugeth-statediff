@@ -173,8 +173,6 @@ func initConfig() {
 	case shared.FILE:
 		indexerConfig = fileConfig
 	case shared.POSTGRES:
-		dbConfig.ID = config.ID
-		dbConfig.ClientName = config.ClientName
 		indexerConfig = dbConfig
 	case shared.DUMP:
 		switch dbDumpDst {

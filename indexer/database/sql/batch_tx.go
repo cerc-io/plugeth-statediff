@@ -18,11 +18,14 @@ package sql
 
 import (
 	"context"
+	"math/big"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/lib/pq"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/database/metrics"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
 	"github.com/cerc-io/plugeth-statediff/utils/log"
@@ -32,7 +35,7 @@ const startingCacheCapacity = 1024 * 24
 
 // BatchTx wraps a sql tx with the state necessary for building the tx concurrently during trie difference iteration
 type BatchTx struct {
-	BlockNumber      string
+	blockNum         string
 	ctx              context.Context
 	dbtx             Tx
 	stm              string
@@ -42,13 +45,68 @@ type BatchTx struct {
 	removedCacheFlag *uint32
 	// Tracks expected cache size and ensures cache is caught up before flush
 	cacheWg sync.WaitGroup
-
-	submit func(blockTx *BatchTx, err error) error
 }
 
-// Submit satisfies indexer.AtomicTx
-func (tx *BatchTx) Submit(err error) error {
-	return tx.submit(tx, err)
+func NewBatch(insertStm string, ctx context.Context, number *big.Int, tx Tx) *BatchTx {
+	blockTx := &BatchTx{
+		removedCacheFlag: new(uint32),
+		ctx:              ctx,
+		blockNum:         number.String(),
+		stm:              insertStm,
+		iplds:            make(chan models.IPLDModel),
+		quit:             make(chan (chan<- struct{})),
+		ipldCache: models.IPLDBatch{
+			BlockNumbers: make([]string, 0, startingCacheCapacity),
+			Keys:         make([]string, 0, startingCacheCapacity),
+			Values:       make([][]byte, 0, startingCacheCapacity),
+		},
+		dbtx: tx,
+	}
+	go blockTx.cache()
+	return blockTx
+}
+
+// Submit satisfies indexer.Batch
+func (tx *BatchTx) Submit() error {
+	defer tx.close()
+
+	t := time.Now()
+	if err := tx.flush(); err != nil {
+		rollback(tx.ctx, tx.dbtx)
+		return err
+	}
+	err := tx.dbtx.Commit(tx.ctx)
+	metrics.IndexerMetrics.PostgresCommitTimer.Update(time.Since(t))
+	return err
+}
+
+func (tx *BatchTx) BlockNumber() string {
+	return tx.blockNum
+}
+
+func (tx *BatchTx) RollbackOnFailure(err error) {
+	if p := recover(); p != nil {
+		defer tx.close()
+		log.Info("panic detected before tx submission, rolling back the tx", "panic", p)
+		rollback(tx.ctx, tx.dbtx)
+		panic(p)
+	} else if err != nil {
+		defer tx.close()
+		log.Info("error detected before tx submission, rolling back the tx", "error", err)
+		rollback(tx.ctx, tx.dbtx)
+	}
+}
+
+func (tx *BatchTx) close() {
+	if tx.quit == nil {
+		return
+	}
+	confirm := make(chan struct{})
+	tx.quit <- confirm
+	close(tx.quit)
+	<-confirm
+	close(tx.iplds)
+	tx.quit = nil
 }
 
 func (tx *BatchTx) flush() error {
@@ -92,7 +150,7 @@ func (tx *BatchTx) cache() {
 func (tx *BatchTx) cacheDirect(key string, value []byte) {
 	tx.cacheWg.Add(1)
 	tx.iplds <- models.IPLDModel{
-		BlockNumber: tx.BlockNumber,
+		BlockNumber: tx.BlockNumber(),
 		Key:         key,
 		Data:        value,
 	}
@@ -101,7 +159,7 @@ func (tx *BatchTx) cacheDirect(key string, value []byte) {
 func (tx *BatchTx) cacheIPLD(i ipld.IPLD) {
 	tx.cacheWg.Add(1)
 	tx.iplds <- models.IPLDModel{
-		BlockNumber: tx.BlockNumber,
+		BlockNumber: tx.BlockNumber(),
 		Key:         i.Cid().String(),
 		Data:        i.RawData(),
 	}
@@ -112,7 +170,7 @@ func (tx *BatchTx) cacheRemoved(key string, value []byte) {
 		atomic.StoreUint32(tx.removedCacheFlag, 1)
 		tx.cacheWg.Add(1)
 		tx.iplds <- models.IPLDModel{
-			BlockNumber: tx.BlockNumber,
+			BlockNumber: tx.BlockNumber(),
 			Key:         key,
 			Data:        value,
 		}

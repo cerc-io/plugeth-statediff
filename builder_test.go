@@ -503,7 +503,7 @@ func TestBuilder(t *testing.T) {
 	block3 = blocks[2]
 	params := statediff.Params{}
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testEmptyDiff",
 			statediff.Args{
@@ -795,7 +795,7 @@ func TestBuilder(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block0: bankAccountAtBlock0LeafNode,
 		block1: block1BranchRootNode,
@@ -817,7 +817,7 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 	}
 	params.ComputeWatchedAddressesLeafPaths()
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testEmptyDiff",
 			statediff.Args{
@@ -1009,7 +1009,7 @@ func TestBuilderWithWatchedAddressList(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block0: bankAccountAtBlock0LeafNode,
 		block1: block1BranchRootNode,
@@ -1028,7 +1028,7 @@ func TestBuilderWithRemovedAccountAndStorage(t *testing.T) {
 	block6 = blocks[5]
 	params := statediff.Params{}
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		// blocks 0-3 are the same as in TestBuilderWithIntermediateNodes
 		{
 			"testBlock4",
@@ -1260,7 +1260,7 @@ func TestBuilderWithRemovedAccountAndStorage(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
@@ -1281,7 +1281,7 @@ func TestBuilderWithRemovedNonWatchedAccount(t *testing.T) {
 	}
 	params.ComputeWatchedAddressesLeafPaths()
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testBlock4",
 			statediff.Args{
@@ -1395,7 +1395,7 @@ func TestBuilderWithRemovedNonWatchedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
@@ -1416,7 +1416,7 @@ func TestBuilderWithRemovedWatchedAccount(t *testing.T) {
 	}
 	params.ComputeWatchedAddressesLeafPaths()
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testBlock4",
 			statediff.Args{
@@ -1599,7 +1599,7 @@ func TestBuilderWithRemovedWatchedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block4: block4BranchRootNode,
 		block5: block5BranchRootNode,
@@ -1700,7 +1700,7 @@ func TestBuilderWithMovedAccount(t *testing.T) {
 	block2 = blocks[1]
 	params := statediff.Params{}
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testBlock1",
 			statediff.Args{
@@ -1827,7 +1827,7 @@ func TestBuilderWithMovedAccount(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block1: block01BranchRootNode,
 		block2: bankAccountAtBlock02LeafNode,
@@ -2088,7 +2088,7 @@ func TestBuilderWithInternalizedLeafNode(t *testing.T) {
 	block3 = blocks[2]
 	params := statediff.Params{}
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testEmptyDiff",
 			statediff.Args{
@@ -2354,7 +2354,7 @@ func TestBuilderWithInternalizedLeafNode(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block1: block1bBranchRootNode,
 		block2: block2bBranchRootNode,
@@ -2377,7 +2377,7 @@ func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
 	}
 	params.ComputeWatchedAddressesLeafPaths()
 
-	var tests = []test_helpers.TestCase{
+	var tests = []test_helpers.DiffTestCase{
 		{
 			"testEmptyDiff",
 			statediff.Args{
@@ -2556,7 +2556,7 @@ func TestBuilderWithInternalizedLeafNodeAndWatchedAddress(t *testing.T) {
 		},
 	}
 
-	test_helpers.RunBuilderTests(t, chain.StateCache(), tests, params, []uint{1, 8, 32})
+	test_helpers.RunBuildStateDiff(t, chain.StateCache(), tests, params)
 	test_helpers.CheckedRoots{
 		block1: block1bBranchRootNode,
 		block2: block2bBranchRootNode,

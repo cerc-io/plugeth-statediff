@@ -7,24 +7,9 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-type symmDiffIterator struct {
-	a, b        iterState // Nodes returned are those in b - a and a - b (keys only)
-	yieldFromA  bool      // Whether next node comes from a
-	count       int       // Number of nodes scanned on either trie
-	eqPathIndex int       // Count index of last pair of equal paths, to detect an updated key
-}
-
-// NewSymmetricDifferenceIterator constructs a trie.NodeIterator that iterates over the symmetric difference
-// of elements in a and b, i.e., the elements in a that are not in b, and vice versa.
-// Returns the iterator, and a pointer to an integer recording the number of nodes seen.
-func NewSymmetricDifferenceIterator(a, b trie.NodeIterator) (*symmDiffIterator, *int) {
-	it := &symmDiffIterator{
-		a: iterState{a, true},
-		b: iterState{b, true},
-		// common paths are detected by a distance <=1 from this index, so put it out of reach
-		eqPathIndex: -2,
-	}
-	return it, &it.count
+type SymmDiffIterator struct {
+	a, b iterState // Nodes returned are those in b - a and a - b (keys only)
+	SymmDiffState
 }
 
 // pairs an iterator with a cache of its valid status
@@ -33,66 +18,93 @@ type iterState struct {
 	valid bool
 }
 
+// SymmDiffState exposes state specific to symmetric difference iteration, which is not accessible
+// from the NodeIterator interface. This includes the number of nodes seen, whether the current key
+// is common to both A and B, and whether the current node is sourced from A or B.
+type SymmDiffState struct {
+	yieldFromA  bool // Whether next node comes from a
+	count       int  // Number of nodes scanned on either trie
+	eqPathIndex int  // Count index of last pair of equal paths, to detect an updated key
+}
+
+// NewSymmetricDifferenceIterator constructs a trie.NodeIterator that iterates over the symmetric difference
+// of elements in a and b, i.e., the elements in a that are not in b, and vice versa.
+// Returns the iterator, and a pointer to an auxiliary object for accessing the state not exposed by the NodeIterator interface recording the number of nodes seen.
+func NewSymmetricDifferenceIterator(a, b trie.NodeIterator) *SymmDiffIterator {
+	it := &SymmDiffIterator{
+		a: iterState{a, true},
+		b: iterState{b, true},
+		// common paths are detected by a distance <=1 between count and this index, so we start at -2
+		SymmDiffState: SymmDiffState{eqPathIndex: -2},
+	}
+	return it
+}
+
 func (st *iterState) Next(descend bool) bool {
 	st.valid = st.NodeIterator.Next(descend)
 	return st.valid
 }
 
-func (it *symmDiffIterator) curr() *iterState {
+// FromA returns true if the current node is sourced from A.
+func (it *SymmDiffState) FromA() bool {
+	return it.yieldFromA
+}
+
+// CommonPath returns true if a node with the current path exists in each sub-iterator - i.e. it
+// represents an updated node.
+func (it *SymmDiffState) CommonPath() bool {
+	return it.count-it.eqPathIndex <= 1
+}
+
+// Count returns the number of nodes seen.
+func (it *SymmDiffState) Count() int {
+	return it.count
+}
+
+func (it *SymmDiffIterator) curr() *iterState {
 	if it.yieldFromA {
 		return &it.a
 	}
 	return &it.b
 }
 
-// FromA returns true if the current node is sourced from A.
-func (it *symmDiffIterator) FromA() bool {
-	return it.yieldFromA
-}
-
-// CommonPath returns true if a node with the current path exists in each sub-iterator - i.e. it
-// represents an updated node.
-func (it *symmDiffIterator) CommonPath() bool {
-	return it.count-it.eqPathIndex <= 1
-}
-
-func (it *symmDiffIterator) Hash() common.Hash {
+func (it *SymmDiffIterator) Hash() common.Hash {
 	return it.curr().Hash()
 }
 
-func (it *symmDiffIterator) Parent() common.Hash {
+func (it *SymmDiffIterator) Parent() common.Hash {
 	return it.curr().Parent()
 }
 
-func (it *symmDiffIterator) Leaf() bool {
+func (it *SymmDiffIterator) Leaf() bool {
 	return it.curr().Leaf()
 }
 
-func (it *symmDiffIterator) LeafKey() []byte {
+func (it *SymmDiffIterator) LeafKey() []byte {
 	return it.curr().LeafKey()
 }
 
-func (it *symmDiffIterator) LeafBlob() []byte {
+func (it *SymmDiffIterator) LeafBlob() []byte {
 	return it.curr().LeafBlob()
 }
 
-func (it *symmDiffIterator) LeafProof() [][]byte {
+func (it *SymmDiffIterator) LeafProof() [][]byte {
 	return it.curr().LeafProof()
 }
 
-func (it *symmDiffIterator) Path() []byte {
+func (it *SymmDiffIterator) Path() []byte {
 	return it.curr().Path()
 }
 
-func (it *symmDiffIterator) NodeBlob() []byte {
+func (it *SymmDiffIterator) NodeBlob() []byte {
 	return it.curr().NodeBlob()
 }
 
-func (it *symmDiffIterator) AddResolver(resolver trie.NodeResolver) {
+func (it *SymmDiffIterator) AddResolver(resolver trie.NodeResolver) {
 	panic("not implemented")
 }
 
-func (it *symmDiffIterator) Next(bool) bool {
+func (it *SymmDiffIterator) Next(bool) bool {
 	// NodeIterators start in a "pre-valid" state, so the first Next advances to a valid node.
 	if it.count == 0 {
 		if it.a.Next(true) {
@@ -110,7 +122,7 @@ func (it *symmDiffIterator) Next(bool) bool {
 	return it.a.valid || it.b.valid
 }
 
-func (it *symmDiffIterator) seek() {
+func (it *SymmDiffIterator) seek() {
 	// Invariants:
 	// - At the end of the function, the sub-iterator with the lexically lesser path
 	// points to the next element
@@ -151,7 +163,7 @@ func (it *symmDiffIterator) seek() {
 	}
 }
 
-func (it *symmDiffIterator) Error() error {
+func (it *SymmDiffIterator) Error() error {
 	if err := it.a.Error(); err != nil {
 		return err
 	}
@@ -171,4 +183,10 @@ func compareNodes(a, b trie.NodeIterator) int {
 		return bytes.Compare(a.LeafBlob(), b.LeafBlob())
 	}
 	return 0
+}
+
+// AlwaysBState returns a dummy SymmDiffState that indicates all elements are from B, and have no
+// common paths with A. This is equivalent to a diff against an empty A.
+func AlwaysBState() SymmDiffState {
+	return SymmDiffState{yieldFromA: false, eqPathIndex: -2}
 }

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cerc-io/plugeth-statediff/indexer/node"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared"
 )
 
@@ -30,7 +29,6 @@ type Config struct {
 	OutputDir                string
 	FilePath                 string
 	WatchedAddressesFilePath string
-	NodeInfo                 node.Info
 }
 
 // FileMode to explicitly type the mode of file writer we are using
@@ -70,20 +68,11 @@ func (c Config) Type() shared.DBType {
 	return shared.FILE
 }
 
-var nodeInfo = node.Info{
-	GenesisBlock: "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
-	NetworkID:    "1",
-	ChainID:      1,
-	ID:           "mockNodeID",
-	ClientName:   "go-ethereum",
-}
-
 // CSVTestConfig config for unit tests
 var CSVTestConfig = Config{
 	Mode:                     CSV,
 	OutputDir:                "./statediffing_test",
 	WatchedAddressesFilePath: "./statediffing_watched_addresses_test_file.csv",
-	NodeInfo:                 nodeInfo,
 }
 
 // SQLTestConfig config for unit tests
@@ -91,5 +80,4 @@ var SQLTestConfig = Config{
 	Mode:                     SQL,
 	FilePath:                 "./statediffing_test_file.sql",
 	WatchedAddressesFilePath: "./statediffing_watched_addresses_test_file.sql",
-	NodeInfo:                 nodeInfo,
 }
