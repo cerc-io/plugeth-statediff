@@ -12,14 +12,15 @@ import (
 	"testing"
 
 	"github.com/cerc-io/eth-iterator-utils/tracker"
-	statediff "github.com/cerc-io/plugeth-statediff"
-	"github.com/cerc-io/plugeth-statediff/adapt"
-	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cerc-io/plugeth-statediff"
+	"github.com/cerc-io/plugeth-statediff/adapt"
+	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
 var subtrieCounts = []uint{1, 8, 32}

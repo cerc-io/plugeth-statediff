@@ -29,27 +29,39 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-// StateDiffIndexer interface required to index statediff data
+// StateDiffIndexer describes the interface for indexing state data.
 type StateDiffIndexer interface {
-	DetectGaps(beginBlock uint64, endBlock uint64) ([]*BlockGap, error)
-	CurrentBlock() (*models.HeaderModel, error)
-	HasBlock(hash common.Hash, number uint64) (bool, error)
+	// PushBlock indexes block data except for state & storage nodes: header, uncles, transactions &
+	// receipts. Returns an initiated DB transaction which must be committed or rolled back.
 	PushBlock(block *types.Block, receipts types.Receipts, totalDifficulty *big.Int) (Batch, error)
+	// PushHeader indexes a block header.
 	PushHeader(batch Batch, header *types.Header, reward, td *big.Int) (string, error)
+	// PushStateNode indexes a state node and its storage trie.
 	PushStateNode(tx Batch, stateNode sdtypes.StateLeafNode, headerID string) error
+	// PushIPLD indexes an IPLD node.
 	PushIPLD(tx Batch, ipld sdtypes.IPLD) error
-	ReportDBMetrics(delay time.Duration, quit <-chan bool)
-
+	// BeginTx starts a new DB transaction.
 	BeginTx(number *big.Int, ctx context.Context) Batch
 
+	// DetectGaps returns a list of gaps in the block range, if any.
+	DetectGaps(beginBlock uint64, endBlock uint64) ([]*BlockGap, error)
+	// CurrentBlock returns the latest indexed block.
+	CurrentBlock() (*models.HeaderModel, error)
+	// HasBlock returns true if the block is indexed.
+	HasBlock(hash common.Hash, number uint64) (bool, error)
+
+	// Close closes the associated output DB connection or files.
+	Close() error
+
 	// Methods used by WatchAddress API/functionality
+
 	LoadWatchedAddresses() ([]common.Address, error)
 	InsertWatchedAddresses(addresses []sdtypes.WatchAddressArg, currentBlock *big.Int) error
 	RemoveWatchedAddresses(addresses []sdtypes.WatchAddressArg) error
 	SetWatchedAddresses(args []sdtypes.WatchAddressArg, currentBlockNumber *big.Int) error
 	ClearWatchedAddresses() error
 
-	Close() error
+	ReportDBMetrics(delay time.Duration, quit <-chan bool)
 }
 
 // Batch required for indexing data atomically

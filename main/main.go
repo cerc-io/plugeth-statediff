@@ -26,7 +26,7 @@ func Initialize(ctx core.Context, pl core.PluginLoader, logger core.Logger) {
 	gethContext = ctx
 }
 
-func InitializeNode(stack core.Node, b core.Backend) {
+func InitializeNode(_ core.Node, b core.Backend) {
 	backend := b.(restricted.Backend)
 
 	networkid, err := strconv.ParseUint(gethContext.String(geth_flags.NetworkIdFlag.Name), 10, 64)
