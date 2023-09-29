@@ -34,13 +34,15 @@ import (
 
 // Writer handles processing and writing of indexed IPLD objects to Postgres
 type Writer struct {
-	db Database
+	db     Database
+	isDiff bool
 }
 
-// NewWriter creates a new pointer to a Writer
-func NewWriter(db Database) *Writer {
+// NewWriter creates a new pointer to a Writer. `diff` indicates whether this is part of an
+// incremental diff (as opposed to a snapshot).
+func NewWriter(db Database, diff bool) *Writer {
 	return &Writer{
-		db: db,
+		db: db, isDiff: diff,
 	}
 }
 
@@ -308,7 +310,8 @@ func (w *Writer) upsertStateCID(tx Tx, stateNode models.StateNodeModel) error {
 		_, err = tx.CopyFrom(w.db.Context(),
 			schema.TableStateNode.TableName(), schema.TableStateNode.ColumnNames(),
 			toRows(toRow(blockNum, stateNode.HeaderID, stateNode.StateKey, stateNode.CID,
-				true, balance, stateNode.Nonce, stateNode.CodeHash, stateNode.StorageRoot, stateNode.Removed)))
+				w.isDiff, balance, stateNode.Nonce, stateNode.CodeHash, stateNode.StorageRoot,
+				stateNode.Removed)))
 		if err != nil {
 			return insertError{"eth.state_cids", err, "COPY", stateNode}
 		}
@@ -318,7 +321,7 @@ func (w *Writer) upsertStateCID(tx Tx, stateNode models.StateNodeModel) error {
 			stateNode.HeaderID,
 			stateNode.StateKey,
 			stateNode.CID,
-			true,
+			w.isDiff,
 			bal,
 			stateNode.Nonce,
 			stateNode.CodeHash,
@@ -346,7 +349,7 @@ func (w *Writer) upsertStorageCID(tx Tx, storageCID models.StorageNodeModel) err
 		_, err = tx.CopyFrom(w.db.Context(),
 			schema.TableStorageNode.TableName(), schema.TableStorageNode.ColumnNames(),
 			toRows(toRow(blockNum, storageCID.HeaderID, storageCID.StateKey, storageCID.StorageKey, storageCID.CID,
-				true, storageCID.Value, storageCID.Removed)))
+				w.isDiff, storageCID.Value, storageCID.Removed)))
 		if err != nil {
 			return insertError{"eth.storage_cids", err, "COPY", storageCID}
 		}
@@ -357,7 +360,7 @@ func (w *Writer) upsertStorageCID(tx Tx, storageCID models.StorageNodeModel) err
 			storageCID.StateKey,
 			storageCID.StorageKey,
 			storageCID.CID,
-			true,
+			w.isDiff,
 			storageCID.Value,
 			storageCID.Removed,
 		)

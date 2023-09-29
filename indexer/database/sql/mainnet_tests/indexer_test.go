@@ -71,7 +71,7 @@ func setupMainnetIndexer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ind, err = sql.NewStateDiffIndexer(context.Background(), chainConf, db)
+	ind, err = sql.NewStateDiffIndexer(context.Background(), chainConf, db, true)
 }
 
 func checkTxClosure(t *testing.T, idle, inUse, open int64) {

@@ -52,6 +52,7 @@ func InitializeNode(stack core.Node, b core.Backend) {
 			adapt.ChainConfig(backend.ChainConfig()),
 			info,
 			serviceConfig.IndexerConfig,
+			true,
 		)
 		if err != nil {
 			log.Error("failed to construct indexer", "error", err)

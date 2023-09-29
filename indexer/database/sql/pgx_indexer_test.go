@@ -44,7 +44,7 @@ func setupPGXIndexer(t *testing.T, config postgres.Config) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ind, err = sql.NewStateDiffIndexer(context.Background(), mocks.TestChainConfig, db)
+	ind, err = sql.NewStateDiffIndexer(context.Background(), mocks.TestChainConfig, db, true)
 	require.NoError(t, err)
 }
 

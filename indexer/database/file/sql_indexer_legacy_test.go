@@ -44,7 +44,7 @@ func setupLegacySQLIndexer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	ind, err = file.NewStateDiffIndexer(test.LegacyConfig, file.SQLTestConfig, test.LegacyNodeInfo)
+	ind, err = file.NewStateDiffIndexer(test.LegacyConfig, file.SQLTestConfig, test.LegacyNodeInfo, true)
 	require.NoError(t, err)
 
 	db, err = postgres.SetupSQLXDB()

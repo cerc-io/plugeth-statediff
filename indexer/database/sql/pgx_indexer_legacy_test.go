@@ -33,7 +33,7 @@ func setupLegacyPGXIndexer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ind, err = sql.NewStateDiffIndexer(context.Background(), test.LegacyConfig, db)
+	ind, err = sql.NewStateDiffIndexer(context.Background(), test.LegacyConfig, db, true)
 	require.NoError(t, err)
 }
 

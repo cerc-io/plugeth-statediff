@@ -44,6 +44,7 @@ var (
 type SQLWriter struct {
 	wc             io.WriteCloser
 	stmts          chan []byte
+	isDiff         bool
 	collatedStmt   []byte
 	collationIndex int
 
@@ -55,11 +56,15 @@ type SQLWriter struct {
 	watchedAddressesFilePath string
 }
 
-// NewSQLWriter creates a new pointer to a Writer
-func NewSQLWriter(wc io.WriteCloser, watchedAddressesFilePath string) *SQLWriter {
+// NewSQLWriter creates a new Writer.
+// `wc` is the underlying io.WriteCloser to write to.
+// `watchedAddressesFilePath` is the path to the file containing watched addresses.
+// `isDiff` means to mark state nodes as belonging to an incremental diff, as opposed to a full snapshot.
+func NewSQLWriter(wc io.WriteCloser, watchedAddressesFilePath string, isDiff bool) *SQLWriter {
 	return &SQLWriter{
 		wc:                       wc,
 		stmts:                    make(chan []byte),
+		isDiff:                   isDiff,
 		collatedStmt:             make([]byte, writeBufferSize),
 		flushChan:                make(chan struct{}),
 		flushFinished:            make(chan struct{}),
@@ -225,12 +230,12 @@ func (sqw *SQLWriter) upsertStateCID(stateNode models.StateNodeModel) {
 		balance = "0"
 	}
 	sqw.stmts <- []byte(fmt.Sprintf(stateInsert, stateNode.BlockNumber, stateNode.HeaderID, stateNode.StateKey, stateNode.CID,
-		stateNode.Removed, true, balance, stateNode.Nonce, stateNode.CodeHash, stateNode.StorageRoot))
+		stateNode.Removed, sqw.isDiff, balance, stateNode.Nonce, stateNode.CodeHash, stateNode.StorageRoot))
 }
 
 func (sqw *SQLWriter) upsertStorageCID(storageCID models.StorageNodeModel) {
 	sqw.stmts <- []byte(fmt.Sprintf(storageInsert, storageCID.BlockNumber, storageCID.HeaderID, storageCID.StateKey, storageCID.StorageKey, storageCID.CID,
-		storageCID.Removed, true, storageCID.Value))
+		storageCID.Removed, sqw.isDiff, storageCID.Value))
 }
 
 // LoadWatchedAddresses loads watched addresses from a file

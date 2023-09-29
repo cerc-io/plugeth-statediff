@@ -33,11 +33,19 @@ import (
 )
 
 // NewStateDiffIndexer creates and returns an implementation of the StateDiffIndexer interface.
+// The returned indexer is used to process state diffs and write them to a database.
+// The returned SQL database, if non-nil, is the indexer's backing database.
+// `ctx` is used to cancel an underlying DB connection.
+// `chainConfig` is used when processing chain state.
+// `nodeInfo` contains metadata on the Ethereum node, which is inserted with the indexed state.
+// `config` contains configuration specific to the indexer.
+// `isDiff` means to mark state nodes as belonging to an incremental diff, as opposed to a full snapshot.
 func NewStateDiffIndexer(
 	ctx context.Context,
 	chainConfig *params.ChainConfig,
 	nodeInfo node.Info,
 	config interfaces.Config,
+	isDiff bool,
 ) (
 	sql.Database,
 	interfaces.StateDiffIndexer,
@@ -50,7 +58,7 @@ func NewStateDiffIndexer(
 		if !ok {
 			return nil, nil, fmt.Errorf("file config is not the correct type: got %T, expected %T", config, file.Config{})
 		}
-		ind, err := file.NewStateDiffIndexer(chainConfig, fc, nodeInfo)
+		ind, err := file.NewStateDiffIndexer(chainConfig, fc, nodeInfo, isDiff)
 		return nil, ind, err
 	case shared.POSTGRES:
 		log.Info("Starting statediff service in Postgres writing mode")
@@ -75,7 +83,7 @@ func NewStateDiffIndexer(
 			return nil, nil, fmt.Errorf("unrecognized Postgres driver type: %s", pgc.Driver)
 		}
 		db := postgres.NewPostgresDB(driver, pgc.Upsert)
-		ind, err := sql.NewStateDiffIndexer(ctx, chainConfig, db)
+		ind, err := sql.NewStateDiffIndexer(ctx, chainConfig, db, isDiff)
 		return db, ind, err
 	case shared.DUMP:
 		log.Info("Starting statediff service in data dump mode")

@@ -34,7 +34,7 @@ func setupSQLXIndexer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ind, err = sql.NewStateDiffIndexer(context.Background(), mocks.TestChainConfig, db)
+	ind, err = sql.NewStateDiffIndexer(context.Background(), mocks.TestChainConfig, db, true)
 	require.NoError(t, err)
 }
 

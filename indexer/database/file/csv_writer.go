@@ -57,7 +57,8 @@ type tableRow struct {
 
 type CSVWriter struct {
 	// dir containing output files
-	dir string
+	dir    string
+	isDiff bool
 
 	writers                fileWriters
 	watchedAddressesWriter fileWriter
@@ -128,7 +129,7 @@ func (tx fileWriters) flush() error {
 	return nil
 }
 
-func NewCSVWriter(path string, watchedAddressesFilePath string) (*CSVWriter, error) {
+func NewCSVWriter(path string, watchedAddressesFilePath string, diff bool) (*CSVWriter, error) {
 	if err := os.MkdirAll(path, 0777); err != nil {
 		return nil, fmt.Errorf("unable to create directory '%s': %w", path, err)
 	}
@@ -147,6 +148,7 @@ func NewCSVWriter(path string, watchedAddressesFilePath string) (*CSVWriter, err
 		writers:                writers,
 		watchedAddressesWriter: watchedAddressesWriter,
 		dir:                    path,
+		isDiff:                 diff,
 		rows:                   make(chan tableRow),
 		flushChan:              make(chan struct{}),
 		flushFinished:          make(chan struct{}),
@@ -278,14 +280,14 @@ func (csw *CSVWriter) upsertStateCID(stateNode models.StateNodeModel) {
 
 	var values []interface{}
 	values = append(values, stateNode.BlockNumber, stateNode.HeaderID, stateNode.StateKey, stateNode.CID,
-		true, balance, strconv.FormatUint(stateNode.Nonce, 10), stateNode.CodeHash, stateNode.StorageRoot, stateNode.Removed)
+		csw.isDiff, balance, strconv.FormatUint(stateNode.Nonce, 10), stateNode.CodeHash, stateNode.StorageRoot, stateNode.Removed)
 	csw.rows <- tableRow{schema.TableStateNode, values}
 }
 
 func (csw *CSVWriter) upsertStorageCID(storageCID models.StorageNodeModel) {
 	var values []interface{}
 	values = append(values, storageCID.BlockNumber, storageCID.HeaderID, storageCID.StateKey, storageCID.StorageKey, storageCID.CID,
-		true, storageCID.Value, storageCID.Removed)
+		csw.isDiff, storageCID.Value, storageCID.Removed)
 	csw.rows <- tableRow{schema.TableStorageNode, values}
 }
 

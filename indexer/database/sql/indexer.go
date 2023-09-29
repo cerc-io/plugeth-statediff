@@ -43,7 +43,7 @@ import (
 
 var _ interfaces.StateDiffIndexer = &StateDiffIndexer{}
 
-// StateDiffIndexer satisfies the indexer.StateDiffIndexer interface for ethereum statediff objects on top of an SQL sql
+// StateDiffIndexer satisfies the indexer.StateDiffIndexer interface for ethereum statediff objects on top of an SQL DB.
 type StateDiffIndexer struct {
 	ctx         context.Context
 	chainConfig *params.ChainConfig
@@ -51,11 +51,17 @@ type StateDiffIndexer struct {
 }
 
 // NewStateDiffIndexer creates a sql implementation of interfaces.StateDiffIndexer
-func NewStateDiffIndexer(ctx context.Context, chainConfig *params.ChainConfig, db Database) (*StateDiffIndexer, error) {
+// `ctx` is used to cancel the underlying DB connection.
+// `chainConfig` is used when processing chain state.
+// `db` is the backing database to use.
+// `isDiff` means to mark state nodes as belonging to an incremental diff, as opposed to a full snapshot.
+func NewStateDiffIndexer(
+	ctx context.Context, chainConfig *params.ChainConfig, db Database, isDiff bool,
+) (*StateDiffIndexer, error) {
 	return &StateDiffIndexer{
 		ctx:         ctx,
 		chainConfig: chainConfig,
-		dbWriter:    NewWriter(db),
+		dbWriter:    NewWriter(db, isDiff),
 	}, nil
 }
 

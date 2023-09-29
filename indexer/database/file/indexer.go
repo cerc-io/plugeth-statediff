@@ -63,7 +63,11 @@ type StateDiffIndexer struct {
 }
 
 // NewStateDiffIndexer creates a void implementation of interfaces.StateDiffIndexer
-func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config, nodeInfo node.Info) (*StateDiffIndexer, error) {
+// `chainConfig` is used when processing chain state.
+// `config` contains configuration specific to the indexer.
+// `nodeInfo` contains metadata on the Ethereum node, which is inserted with the indexed state.
+// `isDiff` means to mark state nodes as belonging to an incremental diff, as opposed to a full snapshot.
+func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config, nodeInfo node.Info, isDiff bool) (*StateDiffIndexer, error) {
 	var err error
 	var writer FileWriter
 
@@ -86,7 +90,7 @@ func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config, nodeInf
 		}
 		log.Info("Writing watched addresses to file", "file", watchedAddressesFilePath)
 
-		writer, err = NewCSVWriter(outputDir, watchedAddressesFilePath)
+		writer, err = NewCSVWriter(outputDir, watchedAddressesFilePath, isDiff)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +113,7 @@ func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config, nodeInf
 		}
 		log.Info("Writing watched addresses to file", "file", watchedAddressesFilePath)
 
-		writer = NewSQLWriter(file, watchedAddressesFilePath)
+		writer = NewSQLWriter(file, watchedAddressesFilePath, isDiff)
 	default:
 		return nil, fmt.Errorf("unrecognized file mode: %s", config.Mode)
 	}
