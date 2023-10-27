@@ -1,5 +1,5 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-git.vdb.to/cerc-io/eth-iterator-utils v0.1.2 h1:PdMR5B9wrQSYuYpFhN+9Kc8AEZ0pTt5eKCmu8oCtFcY=
+git.vdb.to/cerc-io/eth-iterator-utils v0.1.2 h1:+3+T+J21J/VkhlCFujl8HT4XuwebavIuKj0+qfE+0QM=
 git.vdb.to/cerc-io/eth-iterator-utils v0.1.2/go.mod h1:OvXbdWbZ5viBXC/Ui1EkhsSmGB+AUX+TjGa3UDAfjfg=
 git.vdb.to/cerc-io/eth-testing v0.3.1 h1:sPnlMev6oEgTjsW7GtUkSsjKNG/+X6P9q0izSejLGpM=
 git.vdb.to/cerc-io/eth-testing v0.3.1/go.mod h1:qdvpc/W1xvf2MKx3rMOqvFvYaYIHG77Z1g0lwsmw0Uk=
