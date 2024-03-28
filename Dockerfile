@@ -1,5 +1,6 @@
-# Using the same base golang image as plugeth
-FROM golang:1.20-alpine3.18 as builder
+# Using image with same alpine as plugeth,
+# but go 1.21 to evade https://github.com/Consensys/gnark-crypto/issues/468
+FROM golang:1.21-alpine3.18 as builder
 
 RUN apk add --no-cache gcc musl-dev binutils-gold linux-headers git
 
@@ -7,7 +8,7 @@ RUN apk add --no-cache gcc musl-dev binutils-gold linux-headers git
 ARG GIT_VDBTO_TOKEN
 
 # Get and cache deps
-WORKDIR /plugeth-statediff/
+WORKDIR /plugeth-statediff
 COPY go.mod go.sum ./
 RUN if [ -n "$GIT_VDBTO_TOKEN" ]; then git config --global url."https://$GIT_VDBTO_TOKEN:@git.vdb.to/".insteadOf "https://git.vdb.to/"; fi && \
     go mod download && \
