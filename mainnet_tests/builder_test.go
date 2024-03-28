@@ -30,6 +30,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/triedb"
+	"github.com/holiman/uint256"
 
 	statediff "github.com/cerc-io/plugeth-statediff"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
@@ -51,7 +53,7 @@ var (
 	// block 1 data
 	block1CoinbaseAccount = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(5000000000000000000),
+		Balance:  uint256.NewInt(5000000000000000000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -124,7 +126,7 @@ var (
 	// block 2 data
 	block2CoinbaseAccount = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(5000000000000000000),
+		Balance:  uint256.NewInt(5000000000000000000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -137,7 +139,7 @@ var (
 	block2MovedPremineBalance, _ = new(big.Int).SetString("4000000000000000000000", 10)
 	block2MovedPremineAccount    = &types.StateAccount{
 		Nonce:    0,
-		Balance:  block2MovedPremineBalance,
+		Balance:  uint256.MustFromBig(block2MovedPremineBalance),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -229,10 +231,10 @@ var (
 
 	// block3 data
 	// path 060e0f
-	blcok3CoinbaseBalance, _ = new(big.Int).SetString("5156250000000000000", 10)
+	block3CoinbaseBalance, _ = new(big.Int).SetString("5156250000000000000", 10)
 	block3CoinbaseAccount    = &types.StateAccount{
 		Nonce:    0,
-		Balance:  blcok3CoinbaseBalance,
+		Balance:  uint256.MustFromBig(block3CoinbaseBalance),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -246,7 +248,7 @@ var (
 	block3MovedPremineBalance1, _ = new(big.Int).SetString("3750000000000000000", 10)
 	block3MovedPremineAccount1    = &types.StateAccount{
 		Nonce:    0,
-		Balance:  block3MovedPremineBalance1,
+		Balance:  uint256.MustFromBig(block3MovedPremineBalance1),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -260,7 +262,7 @@ var (
 	block3MovedPremineBalance2, _ = new(big.Int).SetString("1999944000000000000000", 10)
 	block3MovedPremineAccount2    = &types.StateAccount{
 		Nonce:    0,
-		Balance:  block3MovedPremineBalance2,
+		Balance:  uint256.MustFromBig(block3MovedPremineBalance2),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -420,7 +422,7 @@ var (
 
 func init() {
 	db = rawdb.NewMemoryDatabase()
-	genesisBlock = core.DefaultGenesisBlock().MustCommit(db)
+	genesisBlock = core.DefaultGenesisBlock().MustCommit(db, triedb.NewDatabase(db, nil))
 
 	blocks := mainnet.GetBlocks()
 	block0 = blocks[0]

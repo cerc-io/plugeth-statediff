@@ -245,7 +245,7 @@ func (sds *Service) WriteLoop(chainEventCh chan core.ChainEvent) {
 			select {
 			case event := <-chainEventCh:
 				// First process metrics for chain events, then forward to workers
-				lastHeight := uint64(defaultStatediffMetrics.lastEventHeight.Value())
+				lastHeight := uint64(defaultStatediffMetrics.lastEventHeight.Snapshot().Value())
 				if lastHeight == 0 {
 					lastHeight = initialPos.indexerBlockNumber
 				}

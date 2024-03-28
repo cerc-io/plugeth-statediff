@@ -138,8 +138,14 @@ func (sdb *builder) WriteStateDiff(
 	if err != nil {
 		return fmt.Errorf("error opening new state trie: %w", err)
 	}
-	subitersA := iterutils.SubtrieIterators(triea.NodeIterator, uint(sdb.subtrieWorkers))
-	subitersB := iterutils.SubtrieIterators(trieb.NodeIterator, uint(sdb.subtrieWorkers))
+	subitersA, err := iterutils.SubtrieIterators(triea.NodeIterator, uint(sdb.subtrieWorkers))
+	if err != nil {
+		return fmt.Errorf("error creating subtrie iterators for old state trie: %w", err)
+	}
+	subitersB, err := iterutils.SubtrieIterators(trieb.NodeIterator, uint(sdb.subtrieWorkers))
+	if err != nil {
+		return fmt.Errorf("error creating subtrie iterators for new state trie: %w", err)
+	}
 
 	logger := log.New("hash", args.BlockHash, "number", args.BlockNumber)
 	// errgroup will cancel if any group fails
@@ -168,12 +174,11 @@ func (sdb *builder) WriteStateSnapshot(
 	tracker tracker.IteratorTracker,
 ) error {
 	defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.WriteStateDiffTimer)
-	// Load tries for old and new states
+
 	tree, err := sdb.stateCache.OpenTrie(stateRoot)
 	if err != nil {
 		return fmt.Errorf("error opening new state trie: %w", err)
 	}
-
 	subiters, _, err := tracker.Restore(tree.NodeIterator)
 	if err != nil {
 		return fmt.Errorf("error restoring iterators: %w", err)
@@ -186,7 +191,10 @@ func (sdb *builder) WriteStateSnapshot(
 				sdb.subtrieWorkers, len(subiters))
 		}
 	} else {
-		subiters = iterutils.SubtrieIterators(tree.NodeIterator, uint(sdb.subtrieWorkers))
+		subiters, err = iterutils.SubtrieIterators(tree.NodeIterator, uint(sdb.subtrieWorkers))
+		if err != nil {
+			return fmt.Errorf("error creating subtrie iterators for trie: %w", err)
+		}
 		for i := range subiters {
 			subiters[i] = tracker.Tracked(subiters[i])
 		}
@@ -414,12 +422,14 @@ func (sdb *builder) processStorageCreations(
 	log.Debug("Storage root for eventual diff", "root", sr)
 	sTrie, err := sdb.stateCache.OpenTrie(sr)
 	if err != nil {
-		log.Info("error in build storage diff eventual", "error", err)
-		return err
+		return fmt.Errorf("error opening storage trie for root %s: %w", sr, err)
 	}
 
 	var prevBlob []byte
-	it := sTrie.NodeIterator(make([]byte, 0))
+	it, err := sTrie.NodeIterator(nil)
+	if err != nil {
+		return fmt.Errorf("error creating iterator for storage trie with root %s: %w", sr, err)
+	}
 	for it.Next(true) {
 		if it.Leaf() {
 			storageLeafNode := sdb.decodeStorageLeaf(it, prevBlob)
@@ -452,7 +462,7 @@ func (sdb *builder) processStorageUpdates(
 	if newroot == oldroot {
 		return nil
 	}
-	log.Trace("Storage roots for incremental diff", "old", oldroot, "new", newroot)
+	log.Debug("Storage roots for incremental diff", "old", oldroot, "new", newroot)
 	oldTrie, err := sdb.stateCache.OpenTrie(oldroot)
 	if err != nil {
 		return err
@@ -463,7 +473,14 @@ func (sdb *builder) processStorageUpdates(
 	}
 
 	var prevBlob []byte
-	a, b := oldTrie.NodeIterator(nil), newTrie.NodeIterator(nil)
+	a, err := oldTrie.NodeIterator(nil)
+	if err != nil {
+		return err
+	}
+	b, err := newTrie.NodeIterator(nil)
+	if err != nil {
+		return err
+	}
 	it := utils.NewSymmetricDifferenceIterator(a, b)
 	for it.Next(true) {
 		if it.FromA() {
@@ -515,10 +532,12 @@ func (sdb *builder) processRemovedAccountStorage(
 	log.Debug("Storage root for removed diffs", "root", sr)
 	sTrie, err := sdb.stateCache.OpenTrie(sr)
 	if err != nil {
-		log.Info("error in build removed account storage diffs", "error", err)
-		return err
+		return fmt.Errorf("error opening storage trie for root %s: %w", sr, err)
 	}
-	it := sTrie.NodeIterator(nil)
+	it, err := sTrie.NodeIterator(nil)
+	if err != nil {
+		return fmt.Errorf("error creating iterator for storage trie with root %s: %w", sr, err)
+	}
 	for it.Next(true) {
 		if it.Leaf() { // only leaf values are indexed, don't need to demarcate removed intermediate nodes
 			leafKey := make([]byte, len(it.LeafKey()))
