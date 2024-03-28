@@ -14,6 +14,8 @@ export CERC_REPO_BASE_DIR="${CERC_REPO_BASE_DIR:-$(git rev-parse --show-toplevel
 
 # v5 migrations only go up to version 18
 echo CERC_STATEDIFF_DB_GOOSE_MIN_VER=18 >> $CONFIG_DIR/stack.env
+# don't run plugeth in the debugger
+echo CERC_REMOTE_DEBUG=false >> $CONFIG_DIR/stack.env
 
 set -x
 
