@@ -72,7 +72,7 @@ jobs:
       - name: "Install stack-orchestrator"
         run: |
           apt-get update && apt-get install -y python3-pip
-          pip3 install --break-system-packages ./stack-orchestrator
+          pip3 install ./stack-orchestrator
       # - name: Install stack-orchestrator
       #   run: |
       #     curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
@@ -87,7 +87,7 @@ jobs:
       - name: Run testnet stack
         working-directory: ./plugeth-statediff
         env:
-          LACONIC_SO: ../laconic-so
+          LACONIC_SO: laconic-so
         run: ./scripts/integration-setup.sh
       - name: Install Python
         uses: actions/setup-python@v4
