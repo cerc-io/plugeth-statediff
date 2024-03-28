@@ -11,7 +11,7 @@ on:
 # Needed until we can incorporate docker startup into the executor container
 env:
   DOCKER_HOST: unix:///var/run/dind.sock
-  SO_VERSION: 26eef04bb89df8c2c35e5fd5bf303d5e02c111d2
+  SO_VERSION: roy/fnet-eth-deneb-upgrade # TODO update after PR merge
 
 jobs:
   unit-tests:
