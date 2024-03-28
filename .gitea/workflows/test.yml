@@ -72,7 +72,7 @@ jobs:
       - name: "Install stack-orchestrator"
         run: |
           apt-get update && apt-get install -y python3-pip
-          pip3 install ./stack-orchestrator
+          pip3 install -e ./stack-orchestrator
       # - name: Install stack-orchestrator
       #   run: |
       #     curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
