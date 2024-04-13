@@ -18,13 +18,13 @@ package statediff_test
 
 import (
 	"encoding/hex"
-	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/holiman/uint256"
 
 	statediff "github.com/cerc-io/plugeth-statediff"
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
@@ -76,7 +76,7 @@ var (
 	})
 	contractAccountAtBlock2 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: common.HexToHash("0xaaea5efba4fd7b45d7ec03918ac5d8b31aa93b48986af0e6b591f0f087c80127").Bytes(),
 		Root:     crypto.Keccak256Hash(block2StorageBranchRootNode),
 	}
@@ -87,7 +87,7 @@ var (
 	})
 	contractAccountAtBlock3 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: common.HexToHash("0xaaea5efba4fd7b45d7ec03918ac5d8b31aa93b48986af0e6b591f0f087c80127").Bytes(),
 		Root:     crypto.Keccak256Hash(block3StorageBranchRootNode),
 	}
@@ -98,7 +98,7 @@ var (
 	})
 	contractAccountAtBlock4 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: common.HexToHash("0xaaea5efba4fd7b45d7ec03918ac5d8b31aa93b48986af0e6b591f0f087c80127").Bytes(),
 		Root:     crypto.Keccak256Hash(block4StorageBranchRootNode),
 	}
@@ -109,7 +109,7 @@ var (
 	})
 	contractAccountAtBlock5 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: common.HexToHash("0xaaea5efba4fd7b45d7ec03918ac5d8b31aa93b48986af0e6b591f0f087c80127").Bytes(),
 		Root:     crypto.Keccak256Hash(block5StorageBranchRootNode),
 	}
@@ -120,7 +120,7 @@ var (
 	})
 	minerAccountAtBlock1 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(2000002625000000000),
+		Balance:  uint256.NewInt(2000002625000000000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -131,7 +131,7 @@ var (
 	})
 	minerAccountAtBlock2 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(4000111203461610525),
+		Balance:  uint256.NewInt(4000111203461610525),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -154,7 +154,7 @@ var (
 	})
 	account1AtBlock2 = &types.StateAccount{
 		Nonce:    2,
-		Balance:  big.NewInt(999555797000009000),
+		Balance:  uint256.NewInt(999555797000009000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -165,7 +165,7 @@ var (
 	})
 	account1AtBlock5 = &types.StateAccount{
 		Nonce:    2,
-		Balance:  big.NewInt(2999586469962854280),
+		Balance:  uint256.NewInt(2999586469962854280),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -176,7 +176,7 @@ var (
 	})
 	account1AtBlock6 = &types.StateAccount{
 		Nonce:    3,
-		Balance:  big.NewInt(2999557977962854280),
+		Balance:  uint256.NewInt(2999557977962854280),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -187,7 +187,7 @@ var (
 	})
 	account2AtBlock2 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(1000),
+		Balance:  uint256.NewInt(1000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -198,7 +198,7 @@ var (
 	})
 	account2AtBlock3 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(2000013574009435976),
+		Balance:  uint256.NewInt(2000013574009435976),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -209,7 +209,7 @@ var (
 	})
 	account2AtBlock4 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(4000048088163070348),
+		Balance:  uint256.NewInt(4000048088163070348),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -220,7 +220,7 @@ var (
 	})
 	account2AtBlock6 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(6000063258066544204),
+		Balance:  uint256.NewInt(6000063258066544204),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -231,7 +231,7 @@ var (
 	})
 	bankAccountAtBlock0 = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(test_helpers.TestBankFunds.Int64()),
+		Balance:  uint256.MustFromBig(test_helpers.TestBankFunds),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -241,10 +241,10 @@ var (
 		bankAccountAtBlock0RLP,
 	})
 
-	block1BankBalance   = big.NewInt(test_helpers.TestBankFunds.Int64() - test_helpers.BalanceChange10000 - test_helpers.GasFees)
+	block1BankBalance   = test_helpers.TestBankFunds.Int64() - test_helpers.BalanceChange10000 - test_helpers.GasFees
 	bankAccountAtBlock1 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  block1BankBalance,
+		Balance:  uint256.NewInt(uint64(block1BankBalance)),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -254,10 +254,10 @@ var (
 		bankAccountAtBlock1RLP,
 	})
 
-	block2BankBalance   = block1BankBalance.Int64() - test_helpers.BalanceChange1Ether - test_helpers.GasFees
+	block2BankBalance   = block1BankBalance - test_helpers.BalanceChange1Ether - test_helpers.GasFees
 	bankAccountAtBlock2 = &types.StateAccount{
 		Nonce:    2,
-		Balance:  big.NewInt(block2BankBalance),
+		Balance:  uint256.NewInt(uint64(block2BankBalance)),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -268,7 +268,7 @@ var (
 	})
 	bankAccountAtBlock3 = &types.StateAccount{
 		Nonce:    3,
-		Balance:  big.NewInt(999914255999990000),
+		Balance:  uint256.NewInt(999914255999990000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -279,7 +279,7 @@ var (
 	})
 	bankAccountAtBlock4 = &types.StateAccount{
 		Nonce:    6,
-		Balance:  big.NewInt(999826859999990000),
+		Balance:  uint256.NewInt(999826859999990000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -290,7 +290,7 @@ var (
 	})
 	bankAccountAtBlock5 = &types.StateAccount{
 		Nonce:    8,
-		Balance:  big.NewInt(999761283999990000),
+		Balance:  uint256.NewInt(999761283999990000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -1617,7 +1617,7 @@ var (
 
 	contractAccountAtBlock01 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: common.HexToHash("0xaaea5efba4fd7b45d7ec03918ac5d8b31aa93b48986af0e6b591f0f087c80127").Bytes(),
 		Root:     crypto.Keccak256Hash(block01StorageBranchRootNode),
 	}
@@ -1629,7 +1629,7 @@ var (
 
 	bankAccountAtBlock01 = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(3999629697375000000),
+		Balance:  uint256.NewInt(3999629697375000000),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -1640,7 +1640,7 @@ var (
 	})
 	bankAccountAtBlock02 = &types.StateAccount{
 		Nonce:    2,
-		Balance:  big.NewInt(5999607323457344852),
+		Balance:  uint256.NewInt(5999607323457344852),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -1866,8 +1866,8 @@ contract test {
 */
 
 var (
-	b                    = big.NewInt(0).Sub(test_helpers.TestBIGBankFunds, test_helpers.BalanceChangeBIG)
-	block1BankBigBalance = big.NewInt(0).Sub(b, big.NewInt(test_helpers.GasFees2))
+	b                    = uint256.NewInt(0).Sub(uint256.MustFromBig(test_helpers.TestBIGBankFunds), test_helpers.BalanceChangeBIG)
+	block1BankBigBalance = uint256.NewInt(0).Sub(b, uint256.NewInt(uint64(test_helpers.GasFees2)))
 	bankAccountAtBlock1b = &types.StateAccount{
 		Nonce:    1,
 		Balance:  block1BankBigBalance,
@@ -1892,8 +1892,8 @@ var (
 		account1AtBlock1bRLP,
 	})
 
-	account1AtBlock2bBalance, _ = big.NewInt(0).SetString("1999999999999999999999999761539571000000000", 10)
-	account1AtBlock2b           = &types.StateAccount{
+	account1AtBlock2bBalance = uint256.MustFromDecimal("1999999999999999999999999761539571000000000")
+	account1AtBlock2b        = &types.StateAccount{
 		Nonce:    1,
 		Balance:  account1AtBlock2bBalance,
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
@@ -1907,7 +1907,7 @@ var (
 
 	minerAccountAtBlock2b = &types.StateAccount{
 		Nonce:    0,
-		Balance:  big.NewInt(4055891787808414571),
+		Balance:  uint256.NewInt(4055891787808414571),
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
 		Root:     test_helpers.EmptyContractRoot,
 	}
@@ -1919,7 +1919,7 @@ var (
 
 	contractAccountAtBlock2b = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: test_helpers.CodeHashForInternalizedLeafNode.Bytes(),
 		Root:     crypto.Keccak256Hash(block2StorageBranchRootNode),
 	}
@@ -1929,8 +1929,8 @@ var (
 		contractAccountAtBlock2bRLP,
 	})
 
-	bankAccountAtBlock3bBalance, _ = big.NewInt(0).SetString("18000000000000000000000001999920365757724976", 10)
-	bankAccountAtBlock3b           = &types.StateAccount{
+	bankAccountAtBlock3bBalance = uint256.MustFromDecimal("18000000000000000000000001999920365757724976")
+	bankAccountAtBlock3b        = &types.StateAccount{
 		Nonce:    3,
 		Balance:  bankAccountAtBlock3bBalance,
 		CodeHash: test_helpers.NullCodeHash.Bytes(),
@@ -1944,7 +1944,7 @@ var (
 
 	contractAccountAtBlock3b = &types.StateAccount{
 		Nonce:    1,
-		Balance:  big.NewInt(0),
+		Balance:  uint256.NewInt(0),
 		CodeHash: test_helpers.CodeHashForInternalizedLeafNode.Bytes(),
 		Root:     crypto.Keccak256Hash(block3bStorageBranchRootNode),
 	}
@@ -1954,8 +1954,8 @@ var (
 		contractAccountAtBlock3bRLP,
 	})
 
-	slot40364  = common.BytesToHash(big.NewInt(40364).Bytes())
-	slot105566 = common.BytesToHash(big.NewInt(105566).Bytes())
+	slot40364  = common.BytesToHash(uint256.NewInt(40364).Bytes())
+	slot105566 = common.BytesToHash(uint256.NewInt(105566).Bytes())
 
 	slot40364StorageValue  = utils.Hex2Bytes("01")
 	slot105566StorageValue = utils.Hex2Bytes("02")

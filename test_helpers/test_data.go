@@ -52,6 +52,7 @@ var (
 	StorageValue = utils.Hex2Bytes("0x03")
 	NullHash     = common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000")
 
+	TestChainConfig                            = &*params.TestChainConfig
 	Testdb                                     = rawdb.NewMemoryDatabase()
 	TestBankKey, _                             = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 	TestBankAddress                            = crypto.PubkeyToAddress(TestBankKey.PublicKey) //0x71562b71999873DB5b286dF957af199Ec94617F7

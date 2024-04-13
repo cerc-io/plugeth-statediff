@@ -17,7 +17,7 @@ type StateView interface {
 // StateTrie is an interface exposing only the necessary methods from state.Trie
 type StateTrie interface {
 	GetKey([]byte) []byte
-	NodeIterator([]byte) trie.NodeIterator
+	NodeIterator([]byte) (trie.NodeIterator, error)
 }
 
 // adapts a state.Database to StateView - used in tests
@@ -36,7 +36,7 @@ func (a stateDatabaseView) OpenTrie(root common.Hash) (StateTrie, error) {
 }
 
 func (a stateDatabaseView) ContractCode(hash common.Hash) ([]byte, error) {
-	return a.db.ContractCode(common.Hash{}, hash)
+	return a.db.ContractCode(common.Address{}, hash)
 }
 
 // adapts geth Trie to plugeth
@@ -46,8 +46,8 @@ type adaptTrie struct {
 
 func NewStateTrie(t plugeth.Trie) StateTrie { return adaptTrie{t} }
 
-func (a adaptTrie) NodeIterator(start []byte) trie.NodeIterator {
-	return NodeIterator(a.Trie.NodeIterator(start))
+func (a adaptTrie) NodeIterator(start []byte) (trie.NodeIterator, error) {
+	return NodeIterator(a.Trie.NodeIterator(start)), nil
 }
 
 func NodeIterator(it plugeth.NodeIterator) trie.NodeIterator {

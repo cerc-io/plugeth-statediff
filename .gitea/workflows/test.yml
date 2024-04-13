@@ -8,10 +8,8 @@ on:
       - main
       - ci-test
 
-# Needed until we can incorporate docker startup into the executor container
 env:
-  DOCKER_HOST: unix:///var/run/dind.sock
-  SO_VERSION: latest
+  SO_VERSION: v1.1.0-87fffca-202404110321
 
 jobs:
   unit-tests:
@@ -23,18 +21,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
           check-latest: true
-      - name: Run dockerd
-        run: |
-          dockerd -H $DOCKER_HOST --userland-proxy=false &
-          sleep 5
       - name: Run DB container
         run: |
           docker compose -f test/compose.yml up --wait
-      - name: Set up Gitea access token
-        env:
-          TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
-        run: |
-          git config --global url."https://$TOKEN:@git.vdb.to/".insteadOf https://git.vdb.to/
       - name: Run tests
         run: go test -p 1 -v ./...
 
@@ -48,30 +37,22 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: cerc-io/plugeth
-          ref: statediff
+          ref: v1.13.14-cerc-0
           path: ./plugeth
-      - name: Run dockerd
-        run: dockerd -H $DOCKER_HOST --userland-proxy=false &
-        # These images need access tokens configured
       - name: Build docker image
-        env:
-          TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
         run: |
-          [[ -n "$TOKEN" ]]
-          docker build ./plugeth-statediff -t cerc/plugeth-statediff:local \
-            --build-arg GIT_VDBTO_TOKEN="$TOKEN"
-          docker build ./plugeth -t cerc/plugeth:local \
-            --build-arg GIT_VDBTO_TOKEN="$TOKEN"
+          docker build ./plugeth-statediff -t cerc/plugeth-statediff:local
+          docker build ./plugeth -t cerc/plugeth:local
 
       - name: Install stack-orchestrator
         run: |
-          curl -L -O https://git.vdb.to/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
+          curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
           chmod +x laconic-so
       - name: Clone system-tests
         uses: actions/checkout@v3
         with:
           repository: cerc-io/system-tests
-          ref: plugeth-compat
+          ref: v0.1.0-20240411
           path: ./system-tests
           token: ${{ secrets.CICD_REPO_TOKEN }}
       - name: Run testnet stack
@@ -80,9 +61,10 @@ jobs:
           LACONIC_SO: ../laconic-so
         run: ./scripts/integration-setup.sh
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.10
+          python-version: 3.11
+
       - name: Run tests
         working-directory: ./system-tests
         run: |
@@ -100,7 +82,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: cerc-io/eth-statediff-compliance
-          ref: v0.1.0
+          ref: v0.2.0
           path: ./eth-statediff-compliance
           token: ${{ secrets.CICD_REPO_TOKEN }}
       - uses: actions/setup-go@v4
@@ -109,24 +91,17 @@ jobs:
           check-latest: true
       - name: Install jq
         run: apt-get update && apt-get install -yq jq
-      - name: Set up Gitea access token
-        env:
-          TOKEN: ${{ secrets.CICD_REPO_TOKEN }}
-        run: |
-          git config --global url."https://$TOKEN:@git.vdb.to/".insteadOf https://git.vdb.to/
 
-      - name: Update go.mod for dumpdiff-geth
+      - name: Update go.mod in nested modules
         working-directory: ./eth-statediff-compliance/
-        run: ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-geth/
-      - name: Update go.mod for dumpdiff-plugeth
-        working-directory: ./eth-statediff-compliance/
-        run: ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-plugeth/
-      - name: Update go.mod for dumpdiff-plugeth-parallel
-        working-directory: ./eth-statediff-compliance/
-        run: ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-plugeth-parallel/
+        run: |
+          set -x
+          ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-plugeth/
+          ./scripts/update-mod.sh ../plugeth-statediff dumpdiff-plugeth-parallel/
       - name: Build tools
         working-directory: ./eth-statediff-compliance/
         run: make all
+
       - name: Compare output of geth and plugeth
         working-directory: ./eth-statediff-compliance/
         run: ./scripts/compare-diffs.sh geth plugeth

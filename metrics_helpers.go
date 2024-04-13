@@ -28,10 +28,10 @@ func countStateDiffBegin(block *types.Block, logger log.Logger) time.Time {
 
 	defaultStatediffMetrics.underway.Inc(1)
 	logger.Debug("writeStateDiff BEGIN",
-		"underway", defaultStatediffMetrics.underway.Count(),
-		"succeeded", defaultStatediffMetrics.succeeded.Count(),
-		"failed", defaultStatediffMetrics.failed.Count(),
-		"total_time", defaultStatediffMetrics.totalProcessingTime.Value(),
+		"underway", defaultStatediffMetrics.underway.Snapshot().Count(),
+		"succeeded", defaultStatediffMetrics.succeeded.Snapshot().Count(),
+		"failed", defaultStatediffMetrics.failed.Snapshot().Count(),
+		"total_time", defaultStatediffMetrics.totalProcessingTime.Snapshot().Value(),
 	)
 
 	return start
@@ -51,10 +51,10 @@ func countStateDiffEnd(start time.Time, logger log.Logger, err *error) time.Dura
 	logger.Debug("writeStateDiff END",
 		"duration", duration,
 		"error", failed,
-		"underway", defaultStatediffMetrics.underway.Count(),
-		"succeeded", defaultStatediffMetrics.succeeded.Count(),
-		"failed", defaultStatediffMetrics.failed.Count(),
-		"total_time", defaultStatediffMetrics.totalProcessingTime.Value(),
+		"underway", defaultStatediffMetrics.underway.Snapshot().Count(),
+		"succeeded", defaultStatediffMetrics.succeeded.Snapshot().Count(),
+		"failed", defaultStatediffMetrics.failed.Snapshot().Count(),
+		"total_time", defaultStatediffMetrics.totalProcessingTime.Snapshot().Value(),
 	)
 
 	return duration
@@ -68,8 +68,8 @@ func countApiRequestBegin(methodName string, blockHashOrNumber interface{}) (tim
 	defaultStatediffMetrics.apiRequestsUnderway.Inc(1)
 
 	logger.Debug("statediff API BEGIN",
-		"underway", defaultStatediffMetrics.apiRequestsUnderway.Count(),
-		"requests", defaultStatediffMetrics.apiRequests.Count(),
+		"underway", defaultStatediffMetrics.apiRequestsUnderway.Snapshot().Count(),
+		"requests", defaultStatediffMetrics.apiRequests.Snapshot().Count(),
 	)
 
 	return start, logger
@@ -82,8 +82,8 @@ func countApiRequestEnd(start time.Time, logger log.Logger, err error) time.Dura
 	logger.Debug("statediff API END",
 		"duration", duration,
 		"error", err != nil,
-		"underway", defaultStatediffMetrics.apiRequestsUnderway.Count(),
-		"requests", defaultStatediffMetrics.apiRequests.Count(),
+		"underway", defaultStatediffMetrics.apiRequestsUnderway.Snapshot().Count(),
+		"requests", defaultStatediffMetrics.apiRequests.Snapshot().Count(),
 	)
 
 	return duration

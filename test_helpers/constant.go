@@ -17,17 +17,16 @@
 package test_helpers
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 )
 
 var (
 	BalanceChange1000                   = int64(1000)
 	BalanceChange10000                  = int64(10000)
-	BalanceChangeBIG, _                 = big.NewInt(0).SetString("2000000000000000000000000000000000000000000", 10)
+	BalanceChangeBIG                    = uint256.MustFromDecimal("2000000000000000000000000000000000000000000")
 	BalanceChange1Ether                 = int64(params.Ether)
-	Block1Account1Balance               = big.NewInt(BalanceChange10000)
+	Block1Account1Balance               = uint256.NewInt(uint64(BalanceChange10000))
 	Block1bAccount1Balance              = BalanceChangeBIG
 	GasFees                             = int64(params.GWei) * int64(params.TxGas)
 	GasFees2                            = int64(params.TxGas) * int64(params.InitialBaseFee)

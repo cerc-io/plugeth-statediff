@@ -1,5 +1,6 @@
 MOCKGEN ?= mockgen
 MOCKS_DIR := $(CURDIR)/test_helpers/mocks
+BUILD_DIR ?= ./build
 
 mocks: $(MOCKS_DIR)/gen_backend.go
 .PHONY: mocks
@@ -16,8 +17,8 @@ docker-image: mocks
 # Local build
 BUILD_FLAGS := --trimpath
 
-plugin: build/statediff.so
+plugin: $(BUILD_DIR)/lib/statediff.so
 .PHONY: plugin
 
-build/statediff.so: ./**/*.go
+$(BUILD_DIR)/lib/statediff.so: ./**/*.go
 	go build --tags linkgeth --buildmode=plugin -o $@ $(BUILD_FLAGS) ./main

@@ -27,27 +27,28 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/cerc-io/plugeth-statediff/utils"
 )
 
 func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance, baseFee *big.Int, initialGasLimit uint64) *types.Block {
-	alloc := map[common.Address]core.GenesisAccount{
-		addr: core.GenesisAccount{Balance: balance}}
+	alloc := map[common.Address]types.Account{addr: {Balance: balance}}
 	g := core.Genesis{
+		Config:  TestChainConfig,
 		Alloc:   alloc,
 		BaseFee: baseFee,
 	}
 	if initialGasLimit != 0 {
 		g.GasLimit = initialGasLimit
 	}
-	return g.MustCommit(db)
+	return g.MustCommit(db, triedb.NewDatabase(db, nil))
 }
 
 // MakeChain creates a chain of n blocks starting at and including parent.
 // the returned hash chain is ordered head->parent.
 func MakeChain(n int, parent *types.Block, chainGen func(int, *core.BlockGen)) ([]*types.Block, *core.BlockChain) {
-	config := params.TestChainConfig
+	config := TestChainConfig
 	blocks, _ := core.GenerateChain(config, parent, ethash.NewFaker(), Testdb, n, chainGen)
 	chain, _ := core.NewBlockChain(Testdb, nil, nil, nil, ethash.NewFaker(), vm.Config{}, nil, nil)
 	return blocks, chain
@@ -148,7 +149,7 @@ func TestChainGenWithInternalLeafNode(i int, block *core.BlockGen) {
 	switch i {
 	case 0:
 		// In block 1, the test bank sends account #1 some ether.
-		tx, _ := types.SignTx(types.NewTransaction(block.TxNonce(TestBankAddress), Account1Addr, BalanceChangeBIG, params.TxGas, big.NewInt(params.InitialBaseFee), nil), signer, TestBankKey)
+		tx, _ := types.SignTx(types.NewTransaction(block.TxNonce(TestBankAddress), Account1Addr, BalanceChangeBIG.ToBig(), params.TxGas, big.NewInt(params.InitialBaseFee), nil), signer, TestBankKey)
 		block.AddTx(tx)
 	case 1:
 		// In block 2 Account1Addr creates a test contract.

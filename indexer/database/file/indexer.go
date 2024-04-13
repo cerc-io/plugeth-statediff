@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -141,9 +142,16 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	blockHashStr := blockHash.String()
 	height := block.NumberU64()
 	traceMsg := fmt.Sprintf("indexer stats for statediff at %d with hash %s:\r\n", height, blockHashStr)
+
+	var blobGasPrice *big.Int
+	excessBlobGas := block.ExcessBlobGas()
+	if excessBlobGas != nil {
+		blobGasPrice = eip4844.CalcBlobFee(*excessBlobGas)
+	}
 	transactions := block.Transactions()
+
 	// Derive any missing fields
-	if err := receipts.DeriveFields(sdi.chainConfig, blockHash, height, block.BaseFee(), transactions); err != nil {
+	if err := receipts.DeriveFields(sdi.chainConfig, blockHash, height, block.Time(), block.BaseFee(), blobGasPrice, transactions); err != nil {
 		return nil, err
 	}
 
@@ -282,6 +290,7 @@ func (sdi *StateDiffIndexer) processUncles(headerID string, blockNumber *big.Int
 type processArgs struct {
 	headerID    string
 	blockNumber *big.Int
+	blockTime   uint64
 	receipts    types.Receipts
 	txs         types.Transactions
 	rctNodes    []*ipld.EthReceipt
@@ -292,7 +301,7 @@ type processArgs struct {
 // processReceiptsAndTxs writes receipt and tx IPLD insert SQL stmts to a file
 func (sdi *StateDiffIndexer) processReceiptsAndTxs(args processArgs) error {
 	// Process receipts and txs
-	signer := types.MakeSigner(sdi.chainConfig, args.blockNumber)
+	signer := types.MakeSigner(sdi.chainConfig, args.blockNumber, args.blockTime)
 	for i, receipt := range args.receipts {
 		txNode := args.txNodes[i]
 		sdi.fileWriter.upsertIPLDNode(args.blockNumber.String(), txNode)

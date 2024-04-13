@@ -27,6 +27,7 @@ import (
 	"github.com/multiformats/go-multihash"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -67,9 +68,16 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	blockHashStr := blockHash.String()
 	height := block.NumberU64()
 	traceMsg := fmt.Sprintf("indexer stats for statediff at %d with hash %s:\r\n", height, blockHashStr)
+
+	var blobGasPrice *big.Int
+	excessBlobGas := block.ExcessBlobGas()
+	if excessBlobGas != nil {
+		blobGasPrice = eip4844.CalcBlobFee(*excessBlobGas)
+	}
 	transactions := block.Transactions()
+
 	// Derive any missing fields
-	if err := receipts.DeriveFields(sdi.chainConfig, blockHash, height, block.BaseFee(), transactions); err != nil {
+	if err := receipts.DeriveFields(sdi.chainConfig, blockHash, height, block.Time(), block.BaseFee(), blobGasPrice, transactions); err != nil {
 		return nil, err
 	}
 
@@ -118,6 +126,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	err = sdi.processReceiptsAndTxs(blockTx, processArgs{
 		headerID:    headerID,
 		blockNumber: block.Number(),
+		blockTime:   block.Time(),
 		receipts:    receipts,
 		txs:         transactions,
 		rctNodes:    rctNodes,
@@ -213,6 +222,7 @@ func (sdi *StateDiffIndexer) processUncles(tx *BatchTx, headerID string, blockNu
 type processArgs struct {
 	headerID    string
 	blockNumber *big.Int
+	blockTime   uint64
 	receipts    types.Receipts
 	txs         types.Transactions
 	rctNodes    []*ipld.EthReceipt
@@ -223,7 +233,7 @@ type processArgs struct {
 // processReceiptsAndTxs publishes and indexes receipt and transaction IPLDs in Postgres
 func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *BatchTx, args processArgs) error {
 	// Process receipts and txs
-	signer := types.MakeSigner(sdi.chainConfig, args.blockNumber)
+	signer := types.MakeSigner(sdi.chainConfig, args.blockNumber, args.blockTime)
 	for i, receipt := range args.receipts {
 		txNode := args.txNodes[i]
 		tx.cacheIPLD(txNode)
