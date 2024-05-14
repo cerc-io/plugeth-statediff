@@ -149,6 +149,15 @@ var TableTransaction = Table{
 	UpsertClause: OnConflict("block_number", "header_id", "tx_hash"),
 }
 
+var TableBlobHash = Table{
+	Name: "eth.blob_hashes",
+	Columns: []Column{
+		{Name: "tx_hash", Type: Dvarchar},
+		{Name: "index", Type: Dinteger},
+		{Name: "blob_hash", Type: Dbytea},
+	},
+}
+
 var TableReceipt = Table{
 	Name: "eth.receipt_cids",
 	Columns: []Column{

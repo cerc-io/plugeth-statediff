@@ -39,6 +39,7 @@ type FileWriter interface {
 	upsertHeaderCID(header models.HeaderModel)
 	upsertUncleCID(uncle models.UncleModel)
 	upsertTransactionCID(transaction models.TxModel)
+	upsertBlobHash(models.BlobHashModel)
 	upsertReceiptCID(rct *models.ReceiptModel)
 	upsertLogCID(logs []*models.LogsModel)
 	upsertWithdrawalCID(models.WithdrawalModel)

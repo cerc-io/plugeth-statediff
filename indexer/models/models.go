@@ -16,7 +16,10 @@
 
 package models
 
-import "github.com/lib/pq"
+import (
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/lib/pq"
+)
 
 // IPLDModel is the db model for ipld.blocks
 type IPLDModel struct {
@@ -129,4 +132,11 @@ type WithdrawalModel struct {
 	Validator   uint64 `db:"validator"`
 	Address     string `db:"address"`
 	Amount      uint64 `db:"amount"`
+}
+
+// BlobHashModel is the DB model for eth.blob_hashes
+type BlobHashModel struct {
+	TxHash   string      `db:"tx_hash"`
+	Index    uint64      `db:"index"`
+	BlobHash common.Hash `db:"blob_hash"`
 }

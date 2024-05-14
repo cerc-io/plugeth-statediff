@@ -338,6 +338,17 @@ func (sdi *StateDiffIndexer) processObjects(args processArgs) error {
 		}
 		sdi.fileWriter.upsertTransactionCID(txModel)
 
+		if trx.Type() == types.BlobTxType {
+			blobHashes := trx.BlobHashes()
+			for i, hash := range blobHashes {
+				sdi.fileWriter.upsertBlobHash(models.BlobHashModel{
+					TxHash:   txID,
+					Index:    uint64(i),
+					BlobHash: hash,
+				})
+			}
+		}
+
 		// this is the contract address if this receipt is for a contract creation tx
 		contract := shared.HandleZeroAddr(receipt.ContractAddress)
 

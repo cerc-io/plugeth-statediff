@@ -254,6 +254,13 @@ func (csw *CSVWriter) upsertTransactionCID(transaction models.TxModel) {
 	metrics.IndexerMetrics.TransactionsCounter.Inc(1)
 }
 
+func (csw *CSVWriter) upsertBlobHash(blobHash models.BlobHashModel) {
+	var values []interface{}
+	values = append(values, blobHash.TxHash, blobHash.Index, blobHash.BlobHash)
+	csw.rows <- tableRow{&schema.TableBlobHash, values}
+	metrics.IndexerMetrics.BlobHashCounter.Inc(1)
+}
+
 func (csw *CSVWriter) upsertReceiptCID(rct *models.ReceiptModel) {
 	var values []interface{}
 	values = append(values, rct.BlockNumber, rct.HeaderID, rct.TxID, rct.CID, rct.Contract,

@@ -3,6 +3,7 @@ package test_helpers
 import (
 	"fmt"
 
+	"github.com/cerc-io/plugeth-statediff/indexer/test_helpers"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -12,20 +13,7 @@ func ClearDB(db *sqlx.DB) error {
 	if err != nil {
 		return err
 	}
-	statements := []string{
-		`TRUNCATE nodes`,
-		`TRUNCATE ipld.blocks`,
-		`TRUNCATE eth.header_cids`,
-		`TRUNCATE eth.uncle_cids`,
-		`TRUNCATE eth.transaction_cids`,
-		`TRUNCATE eth.receipt_cids`,
-		`TRUNCATE eth.state_cids`,
-		`TRUNCATE eth.storage_cids`,
-		`TRUNCATE eth.log_cids`,
-		`TRUNCATE eth.withdrawal_cids`,
-		`TRUNCATE eth_meta.watched_addresses`,
-	}
-	for _, stm := range statements {
+	for _, stm := range test_helpers.TruncateStatements {
 		if _, err = tx.Exec(stm); err != nil {
 			return fmt.Errorf("error executing `%s`: %w", stm, err)
 		}

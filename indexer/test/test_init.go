@@ -37,14 +37,13 @@ var (
 					WHERE key = $1 AND block_number = $2`
 	watchedAddressesPgGet = `SELECT *
 					FROM eth_meta.watched_addresses`
-	tx1, tx2, tx3, tx4, tx5, rct1, rct2, rct3, rct4, rct5            []byte
+	encodedTxs, encodedRcts                                          [][]byte
 	wd1, wd2                                                         []byte
 	nonCanonicalBlockRct1, nonCanonicalBlockRct2                     []byte
 	nonCanonicalBlock2Rct1, nonCanonicalBlock2Rct2                   []byte
 	mockBlock, mockNonCanonicalBlock, mockNonCanonicalBlock2         *types.Block
 	headerCID, mockNonCanonicalHeaderCID, mockNonCanonicalHeader2CID cid.Cid
-	trx1CID, trx2CID, trx3CID, trx4CID, trx5CID                      cid.Cid
-	rct1CID, rct2CID, rct3CID, rct4CID, rct5CID                      cid.Cid
+	txCIDs, rctCIDs                                                  []cid.Cid
 	wd1CID, wd2CID                                                   cid.Cid
 	nonCanonicalBlockRct1CID, nonCanonicalBlockRct2CID               cid.Cid
 	nonCanonicalBlock2Rct1CID, nonCanonicalBlock2Rct2CID             cid.Cid
@@ -64,60 +63,28 @@ func init() {
 	mockNonCanonicalBlock2 = mocks.MockNonCanonicalBlock2
 	nonCanonicalBlock2Rcts := mocks.MockNonCanonicalBlock2Receipts
 
-	// encode mock receipts
+	// encode mock txs and receipts
 	buf := new(bytes.Buffer)
-	txs.EncodeIndex(0, buf)
-	tx1 = make([]byte, buf.Len())
-	copy(tx1, buf.Bytes())
-	buf.Reset()
+	encodedTxs = make([][]byte, len(txs))
+	encodedRcts = make([][]byte, len(rcts))
 
-	txs.EncodeIndex(1, buf)
-	tx2 = make([]byte, buf.Len())
-	copy(tx2, buf.Bytes())
-	buf.Reset()
+	for i := 0; i < len(txs); i++ {
+		txs.EncodeIndex(i, buf)
+		tx := make([]byte, buf.Len())
+		copy(tx, buf.Bytes())
+		buf.Reset()
+		encodedTxs[i] = tx
+	}
 
-	txs.EncodeIndex(2, buf)
-	tx3 = make([]byte, buf.Len())
-	copy(tx3, buf.Bytes())
-	buf.Reset()
-
-	txs.EncodeIndex(3, buf)
-	tx4 = make([]byte, buf.Len())
-	copy(tx4, buf.Bytes())
-	buf.Reset()
-
-	txs.EncodeIndex(4, buf)
-	tx5 = make([]byte, buf.Len())
-	copy(tx5, buf.Bytes())
-	buf.Reset()
-
-	rcts.EncodeIndex(0, buf)
-	rct1 = make([]byte, buf.Len())
-	copy(rct1, buf.Bytes())
-	buf.Reset()
-
-	rcts.EncodeIndex(1, buf)
-	rct2 = make([]byte, buf.Len())
-	copy(rct2, buf.Bytes())
-	buf.Reset()
-
-	rcts.EncodeIndex(2, buf)
-	rct3 = make([]byte, buf.Len())
-	copy(rct3, buf.Bytes())
-	buf.Reset()
-
-	rcts.EncodeIndex(3, buf)
-	rct4 = make([]byte, buf.Len())
-	copy(rct4, buf.Bytes())
-	buf.Reset()
-
-	rcts.EncodeIndex(4, buf)
-	rct5 = make([]byte, buf.Len())
-	copy(rct5, buf.Bytes())
-	buf.Reset()
+	for i := 0; i < len(rcts); i++ {
+		rcts.EncodeIndex(i, buf)
+		rct := make([]byte, buf.Len())
+		copy(rct, buf.Bytes())
+		buf.Reset()
+		encodedRcts[i] = rct
+	}
 
 	// encode mock withdrawals
-	// wds
 	mocks.MockWithdrawals.EncodeIndex(0, buf)
 	wd1 = make([]byte, buf.Len())
 	copy(wd1, buf.Bytes())
@@ -152,19 +119,20 @@ func init() {
 	headerCID, _ = ipld.RawdataToCid(ipld.MEthHeader, mocks.MockHeaderRlp, multihash.KECCAK_256)
 	mockNonCanonicalHeaderCID, _ = ipld.RawdataToCid(ipld.MEthHeader, mocks.MockNonCanonicalHeaderRlp, multihash.KECCAK_256)
 	mockNonCanonicalHeader2CID, _ = ipld.RawdataToCid(ipld.MEthHeader, mocks.MockNonCanonicalHeader2Rlp, multihash.KECCAK_256)
-	trx1CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx1, multihash.KECCAK_256)
-	trx2CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx2, multihash.KECCAK_256)
-	trx3CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx3, multihash.KECCAK_256)
-	trx4CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx4, multihash.KECCAK_256)
-	trx5CID, _ = ipld.RawdataToCid(ipld.MEthTx, tx5, multihash.KECCAK_256)
+
+	for i := 0; i < len(txs); i++ {
+		tx, _ := ipld.RawdataToCid(ipld.MEthTx, encodedTxs[i], multihash.KECCAK_256)
+		txCIDs = append(txCIDs, tx)
+	}
+
 	state1CID, _ = ipld.RawdataToCid(ipld.MEthStateTrie, mocks.ContractLeafNode, multihash.KECCAK_256)
 	state2CID, _ = ipld.RawdataToCid(ipld.MEthStateTrie, mocks.AccountLeafNode, multihash.KECCAK_256)
 	storageCID, _ = ipld.RawdataToCid(ipld.MEthStorageTrie, mocks.StorageLeafNode, multihash.KECCAK_256)
-	rct1CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct1, multihash.KECCAK_256)
-	rct2CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct2, multihash.KECCAK_256)
-	rct3CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct3, multihash.KECCAK_256)
-	rct4CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct4, multihash.KECCAK_256)
-	rct5CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct5, multihash.KECCAK_256)
+
+	for i := 0; i < len(rcts); i++ {
+		rct, _ := ipld.RawdataToCid(ipld.MEthTxReceipt, encodedRcts[i], multihash.KECCAK_256)
+		rctCIDs = append(rctCIDs, rct)
+	}
 
 	wd1CID, _ = ipld.RawdataToCid(ipld.MEthWithdrawal, wd1, multihash.KECCAK_256)
 	wd2CID, _ = ipld.RawdataToCid(ipld.MEthWithdrawal, wd2, multihash.KECCAK_256)

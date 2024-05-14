@@ -170,6 +170,7 @@ const (
 
 var (
 	withdrawalsInsert = schema.TableWithdrawal.FmtStringInsert() + ";\n"
+	blobHashesInsert  = schema.TableBlobHash.FmtStringInsert() + ";\n"
 )
 
 func (sqw *SQLWriter) upsertNode(node nodeinfo.Info) {
@@ -228,6 +229,11 @@ func (sqw *SQLWriter) upsertTransactionCID(transaction models.TxModel) {
 	sqw.stmts <- []byte(fmt.Sprintf(txInsert, transaction.BlockNumber, transaction.HeaderID, transaction.TxHash, transaction.CID, transaction.Dst,
 		transaction.Src, transaction.Index, transaction.Type, transaction.Value))
 	metrics.IndexerMetrics.TransactionsCounter.Inc(1)
+}
+
+func (sqw *SQLWriter) upsertBlobHash(bh models.BlobHashModel) {
+	sqw.stmts <- []byte(fmt.Sprintf(blobHashesInsert, bh.TxHash, bh.Index, bh.BlobHash))
+	metrics.IndexerMetrics.BlobHashCounter.Inc(1)
 }
 
 func (sqw *SQLWriter) upsertReceiptCID(rct *models.ReceiptModel) {

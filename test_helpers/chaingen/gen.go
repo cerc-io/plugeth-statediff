@@ -11,8 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 )
 
 const secondsPerBlock = 12
@@ -147,4 +149,59 @@ func (gen *GenContext) createTx(from common.Address, to *common.Address, amount 
 		})
 	}
 	return types.SignTx(tx, signer, priv)
+}
+
+func (gen *GenContext) createBlobTx(
+	from common.Address,
+	to common.Address,
+	amount *uint256.Int,
+	gasLimit uint64,
+	blobData []byte,
+) (*types.Transaction, error) {
+	signer := types.MakeSigner(gen.ChainConfig, gen.block.Number(), gen.time)
+	nonce := gen.block.TxNonce(from)
+	priv, ok := gen.Keys[from]
+	if !ok {
+		return nil, errors.New("No private key for sender address" + from.String())
+	}
+
+	if !gen.ChainConfig.IsCancun(gen.block.Number(), gen.time) {
+		return nil, errors.New("blob tx is only supported from Cancun fork")
+	}
+
+	sidecar := MakeSidecar([][]byte{blobData})
+	tx := types.NewTx(&types.BlobTx{
+		ChainID:    uint256.MustFromBig(gen.ChainConfig.ChainID),
+		Nonce:      nonce,
+		To:         to,
+		Gas:        gasLimit,
+		GasTipCap:  uint256.NewInt(50),
+		GasFeeCap:  uint256.NewInt(1000000000),
+		Value:      amount,
+		BlobFeeCap: uint256.NewInt(1000000),
+		BlobHashes: sidecar.BlobHashes(),
+		Sidecar:    sidecar,
+	})
+	return types.SignTx(tx, signer, priv)
+}
+
+// From go-ethereum/cmd/devp2p/internal/ethtest/chain.go
+func MakeSidecar(data [][]byte) *types.BlobTxSidecar {
+	var (
+		blobs       = make([]kzg4844.Blob, len(data))
+		commitments []kzg4844.Commitment
+		proofs      []kzg4844.Proof
+	)
+	for i := range blobs {
+		copy(blobs[i][:], data[i])
+		c, _ := kzg4844.BlobToCommitment(blobs[i])
+		p, _ := kzg4844.ComputeBlobProof(blobs[i], c)
+		commitments = append(commitments, c)
+		proofs = append(proofs, p)
+	}
+	return &types.BlobTxSidecar{
+		Blobs:       blobs,
+		Commitments: commitments,
+		Proofs:      proofs,
+	}
 }

@@ -25,6 +25,21 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 )
 
+var TruncateStatements = []string{
+	`TRUNCATE nodes`,
+	`TRUNCATE ipld.blocks`,
+	`TRUNCATE eth.header_cids`,
+	`TRUNCATE eth.uncle_cids`,
+	`TRUNCATE eth.transaction_cids`,
+	`TRUNCATE eth.blob_hashes`,
+	`TRUNCATE eth.receipt_cids`,
+	`TRUNCATE eth.state_cids`,
+	`TRUNCATE eth.storage_cids`,
+	`TRUNCATE eth.log_cids`,
+	`TRUNCATE eth.withdrawal_cids`,
+	`TRUNCATE eth_meta.watched_addresses`,
+}
+
 // DedupFile removes duplicates from the given file
 func DedupFile(filePath string) error {
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, os.ModePerm)
@@ -39,10 +54,6 @@ func DedupFile(filePath string) error {
 		s := sc.Text()
 		stmts[s] = struct{}{}
 	}
-	if err != nil {
-		return err
-	}
-
 	f.Close()
 
 	f, err = os.Create(filePath)
@@ -60,31 +71,23 @@ func DedupFile(filePath string) error {
 
 // TearDownDB is used to tear down the watcher dbs after tests
 func TearDownDB(t *testing.T, db sql.Database) {
-	ctx := context.Background()
-	tx, err := db.Begin(ctx)
+	err := ClearDB(db)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
 
-	statements := []string{
-		`TRUNCATE nodes`,
-		`TRUNCATE ipld.blocks`,
-		`TRUNCATE eth.header_cids`,
-		`TRUNCATE eth.uncle_cids`,
-		`TRUNCATE eth.transaction_cids`,
-		`TRUNCATE eth.receipt_cids`,
-		`TRUNCATE eth.state_cids`,
-		`TRUNCATE eth.storage_cids`,
-		`TRUNCATE eth.log_cids`,
-		`TRUNCATE eth.withdrawal_cids`,
-		`TRUNCATE eth_meta.watched_addresses`,
+func ClearDB(db sql.Database) error {
+	ctx := context.Background()
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return err
 	}
-	for _, stm := range statements {
+
+	for _, stm := range TruncateStatements {
 		if _, err = tx.Exec(ctx, stm); err != nil {
-			t.Fatal(err)
+			return err
 		}
 	}
-	if err = tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
+	return tx.Commit(ctx)
 }

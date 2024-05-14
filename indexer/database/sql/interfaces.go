@@ -52,6 +52,7 @@ type Statements interface {
 	SetCanonicalHeaderStm() string
 	InsertUncleStm() string
 	InsertTxStm() string
+	InsertBlobHashStm() string
 	InsertRctStm() string
 	InsertLogStm() string
 	InsertWithdrawalStm() string
