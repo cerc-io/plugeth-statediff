@@ -168,6 +168,7 @@ func (sdb *builder) WriteStateDiff(
 
 // WriteStateDiff writes a statediff object to output sinks
 func (sdb *builder) WriteStateSnapshot(
+	ctx context.Context,
 	stateRoot common.Hash, params Params,
 	nodeSink sdtypes.StateNodeSink,
 	ipldSink sdtypes.IPLDSink,
@@ -200,7 +201,7 @@ func (sdb *builder) WriteStateSnapshot(
 		}
 	}
 	// errgroup will cancel if any group fails
-	g, ctx := errgroup.WithContext(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
 	for i := range subiters {
 		func(subdiv uint) {
 			g.Go(func() error {

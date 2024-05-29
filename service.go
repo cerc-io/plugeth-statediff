@@ -825,7 +825,7 @@ func (sds *Service) writeStateDiff(block *types.Block, parentRoot common.Hash, p
 	}
 	defer tx.RollbackOnFailure(err)
 
-	// TODO: review/remove the need to sync here
+	// TODO: review necessity of locking here
 	var nodeMtx, ipldMtx sync.Mutex
 	nodeSink := func(node types2.StateLeafNode) error {
 		defer metrics.UpdateDuration(time.Now(), metrics.IndexerMetrics.OutputTimer)

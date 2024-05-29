@@ -1,8 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-git.vdb.to/cerc-io/plugeth v1.13.14-cerc-0 h1:R57mkeo902vrDPzDZsXsjWxXSgtg/XjwNF/UdvvB7Vs=
-git.vdb.to/cerc-io/plugeth v1.13.14-cerc-0/go.mod h1:1AMBRYYMPWAWPCK3ui469ymYlEsciWBrRJWjPX5nxy8=
-git.vdb.to/cerc-io/plugeth-utils v1.5.0-cerc-0 h1:4GwCBbdLB8mCZINDzoUqpPq7aP4Ha5PPYCyG2h6ee6s=
-git.vdb.to/cerc-io/plugeth-utils v1.5.0-cerc-0/go.mod h1:COwKAuTZIsCouCOrIDBhvHZqpbOO1Ojgdy5KTvL8mJg=
+git.vdb.to/cerc-io/plugeth v1.13.14-cerc-2 h1:wUnIMCUP+e/F6f/JA1Ui51AagmYkxctEcyg66QJJj0o=
+git.vdb.to/cerc-io/plugeth v1.13.14-cerc-2/go.mod h1:sUMNKCsvK1Afdogl+n8QTm9hmCX4fa0X3SqE+xru89k=
+git.vdb.to/cerc-io/plugeth-utils v1.5.0-cerc-1 h1:WMdo9Pb5lAn0e2WC1CcD6/mRTWwU0r2KjFoEh0mh2rs=
+git.vdb.to/cerc-io/plugeth-utils v1.5.0-cerc-1/go.mod h1:Wf47tlE95PHZto1PMFRlmQAf98MBoNSRbwnQxeq0+Z0=
 github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9/go.mod h1:bOvUY6CB00SOBii9/FifXqc0awNKxLFCL/+pkDPuyl8=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.3.2 h1:o7IhLm0Msx3BaB+n3Ag7L8EVlByGnpq14C4YWiu/gL8=
@@ -107,8 +107,8 @@ github.com/envoyproxy/go-control-plane v0.9.9-0.20210217033140-668b12f5399d/go.m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5/go.mod h1:a2zkGnVExMxdzMo3M0Hi/3sEU+cWnZpSni0O6/Yb/P0=
 github.com/etcd-io/bbolt v1.3.3/go.mod h1:ZF2nL25h33cCyBtcyWeZ2/I3HQOfTP+0PIEvHjkjCrw=
-github.com/ethereum/c-kzg-4844/bindings/go v0.0.0-20230126171313-363c7d7593b4 h1:B2mpK+MNqgPqk2/KNi1LbqwtZDy5F7iy0mynQiBr8VA=
-github.com/ethereum/c-kzg-4844/bindings/go v0.0.0-20230126171313-363c7d7593b4/go.mod h1:y4GA2JbAUama1S4QwYjC2hefgGLU8Ul0GMtL/ADMF1c=
+github.com/ethereum/c-kzg-4844 v0.4.0 h1:3MS1s4JtA868KpJxroZoepdV0ZKBp3u/O5HcZ7R3nlY=
+github.com/ethereum/c-kzg-4844 v0.4.0/go.mod h1:VewdlzQmpT5QSrVhbBuGoCdFJkpaJlO1aQputP83wc0=
 github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072/go.mod h1:duJ4Jxv5lDcvg4QuQr0oowTf7dz4/CR8NtyCooz9HL8=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/ferranbt/fastssz v0.1.2 h1:Dky6dXlngF6Qjc+EfDipAkE83N5I5DE68bY6O0VLNPk=

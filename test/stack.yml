@@ -1,8 +1,8 @@
 version: "1.2"
 name: fixturenet-plugeth-tx
-description: "plugeth Ethereum Fixturenet"
+description: "Plugeth Ethereum Fixturenet for testing plugeth-statediff"
 repos:
-  - git.vdb.to/cerc-io/plugeth@statediff
+  - git.vdb.to/cerc-io/plugeth@v1.5.0-cerc-2
   - git.vdb.to/cerc-io/plugeth-statediff
   - git.vdb.to/cerc-io/lighthouse
   - git.vdb.to/cerc-io/ipld-eth-db@v5.2.1-alpha

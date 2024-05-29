@@ -48,7 +48,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/deepmap/oapi-codegen v1.8.2 // indirect
-	github.com/ethereum/c-kzg-4844/bindings/go v0.0.0-20230126171313-363c7d7593b4 // indirect
+	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/ferranbt/fastssz v0.1.2 // indirect
 	github.com/fjl/memsize v0.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -140,6 +140,6 @@ require (
 )
 
 replace (
-	github.com/ethereum/go-ethereum => git.vdb.to/cerc-io/plugeth v1.13.14-cerc-0
-	github.com/openrelayxyz/plugeth-utils => git.vdb.to/cerc-io/plugeth-utils v1.5.0-cerc-0
+	github.com/ethereum/go-ethereum => git.vdb.to/cerc-io/plugeth v1.13.14-cerc-2
+	github.com/openrelayxyz/plugeth-utils => git.vdb.to/cerc-io/plugeth-utils v1.5.0-cerc-1
 )

@@ -42,7 +42,7 @@ var (
 	// block data
 	TestChainConfig = params.MainnetChainConfig
 	BlockNumber     = TestChainConfig.LondonBlock
-	BlockTime       = *TestChainConfig.CancunTime // TODO: verify this
+	BlockTime       = *TestChainConfig.CancunTime
 
 	// canonical block at London height
 	// includes 5 transactions: 3 Legacy + 1 EIP-2930 + 1 EIP-1559

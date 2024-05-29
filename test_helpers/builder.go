@@ -2,6 +2,7 @@ package test_helpers
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -93,6 +94,7 @@ func RunStateSnapshot(
 				tr := tracker.New(recoveryFile, subtries)
 				defer tr.CloseAndSave()
 				return builder.WriteStateSnapshot(
+					context.Background(),
 					test.StateRoot, params, stateAppender, ipldAppender, tr,
 				)
 			}

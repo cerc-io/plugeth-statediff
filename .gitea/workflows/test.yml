@@ -34,15 +34,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           path: ./plugeth-statediff
-      - uses: actions/checkout@v3
-        with:
-          repository: cerc-io/plugeth
-          ref: v1.13.14-cerc-0
-          path: ./plugeth
       - name: Build docker image
         run: |
           docker build ./plugeth-statediff -t cerc/plugeth-statediff:local
-          docker build ./plugeth -t cerc/plugeth:local
 
       - name: Install stack-orchestrator
         run: |
