@@ -131,6 +131,7 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 		}
 		txTypeAndValueStr := `SELECT tx_type, CAST(value as TEXT) FROM eth.transaction_cids WHERE cid = $1`
 		txBlobHashQuery := `SELECT blob_hash FROM eth.blob_hashes WHERE tx_hash = $1`
+		txBlobIndexQuery := `SELECT index FROM eth.blob_hashes WHERE tx_hash = $1`
 		switch c {
 		case txCIDs[0].String():
 			require.Equal(t, encodedTxs[0], data)
@@ -206,12 +207,19 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			}
 			require.Equal(t, types.BlobTxType, txRes.TxType)
 			require.Equal(t, transactions[5].Value().String(), txRes.Value)
+
 			var txBlobHashes []common.Hash
+			var txBlobIndices []uint64
 			err = db.Select(context.Background(), &txBlobHashes, txBlobHashQuery, transactions[5].Hash().String())
 			if err != nil {
 				t.Fatal(err)
 			}
 			require.Equal(t, transactions[5].BlobHashes(), txBlobHashes)
+			err = db.Select(context.Background(), &txBlobIndices, txBlobIndexQuery, transactions[5].Hash().String())
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, []uint64{0, 1}, txBlobIndices)
 		}
 	}
 }
