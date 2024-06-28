@@ -37,6 +37,7 @@ const (
 	MEthStorageTrie     = 0x98
 	MEthLogTrie         = 0x99
 	MEthLog             = 0x9a
+	MEthWithdrawal      = 0x9b // TODO add to multicodec registry
 )
 
 // RawdataToCid takes the desired codec and a slice of bytes

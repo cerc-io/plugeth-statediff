@@ -84,7 +84,7 @@ func NewStateDiffIndexer(chainConfig *params.ChainConfig, config Config, nodeInf
 		if _, err := os.Stat(outputDir); !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("cannot create output directory, directory (%s) already exists", outputDir)
 		}
-		log.Info("Writing statediff CSV files to directory", "file", outputDir)
+		log.Info("Writing statediff CSV files", "directory", outputDir)
 
 		if watchedAddressesFilePath == "" {
 			watchedAddressesFilePath = defaultWatchedAddressesCSVFilePath
@@ -156,7 +156,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}
 
 	// Generate the block iplds
-	txNodes, rctNodes, logNodes, err := ipld.FromBlockAndReceipts(block, receipts)
+	txNodes, rctNodes, logNodes, wdNodes, err := ipld.FromBlockAndReceipts(block, receipts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating IPLD nodes from block and receipts: %v", err)
 	}
@@ -197,15 +197,16 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	traceMsg += fmt.Sprintf("uncle processing time: %s\r\n", tDiff.String())
 	t = time.Now()
 
-	// write receipts and txs
-	err = sdi.processReceiptsAndTxs(processArgs{
+	err = sdi.processObjects(processArgs{
 		headerID:    headerID,
 		blockNumber: block.Number(),
 		receipts:    receipts,
 		txs:         transactions,
+		withdrawals: block.Withdrawals(),
 		rctNodes:    rctNodes,
 		txNodes:     txNodes,
 		logNodes:    logNodes,
+		wdNodes:     wdNodes,
 	})
 	if err != nil {
 		return nil, err
@@ -222,7 +223,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 // it returns the headerID
 func (sdi *StateDiffIndexer) PushHeader(_ interfaces.Batch, header *types.Header, reward, td *big.Int) (string, error) {
 	// Process the header
-	headerNode, err := ipld.NewEthHeader(header)
+	headerNode, err := ipld.EncodeHeader(header)
 	if err != nil {
 		return "", err
 	}
@@ -245,6 +246,7 @@ func (sdi *StateDiffIndexer) PushHeader(_ interfaces.Batch, header *types.Header
 		Timestamp:       header.Time,
 		Coinbase:        header.Coinbase.String(),
 		Canonical:       true,
+		WithdrawalsRoot: shared.MaybeStringHash(header.WithdrawalsHash),
 	})
 	return headerID, nil
 }
@@ -293,13 +295,15 @@ type processArgs struct {
 	blockTime   uint64
 	receipts    types.Receipts
 	txs         types.Transactions
-	rctNodes    []*ipld.EthReceipt
-	txNodes     []*ipld.EthTx
-	logNodes    [][]*ipld.EthLog
+	withdrawals types.Withdrawals
+	rctNodes    []ipld.IPLD
+	txNodes     []ipld.IPLD
+	logNodes    [][]ipld.IPLD
+	wdNodes     []ipld.IPLD
 }
 
-// processReceiptsAndTxs writes receipt and tx IPLD insert SQL stmts to a file
-func (sdi *StateDiffIndexer) processReceiptsAndTxs(args processArgs) error {
+// processObjects writes receipt and tx IPLD insert SQL stmts to a file
+func (sdi *StateDiffIndexer) processObjects(args processArgs) error {
 	// Process receipts and txs
 	signer := types.MakeSigner(sdi.chainConfig, args.blockNumber, args.blockTime)
 	for i, receipt := range args.receipts {
@@ -375,6 +379,21 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(args processArgs) error {
 			}
 		}
 		sdi.fileWriter.upsertLogCID(logDataSet)
+	}
+	// Process withdrawals
+	for i, wd := range args.withdrawals {
+		wdNode := args.wdNodes[i]
+		sdi.fileWriter.upsertIPLDNode(args.blockNumber.String(), wdNode)
+		wdModel := models.WithdrawalModel{
+			BlockNumber: args.blockNumber.String(),
+			HeaderID:    args.headerID,
+			CID:         wdNode.Cid().String(),
+			Index:       wd.Index,
+			Validator:   wd.Validator,
+			Address:     wd.Address.String(),
+			Amount:      wd.Amount,
+		}
+		sdi.fileWriter.upsertWithdrawalCID(wdModel)
 	}
 
 	return nil

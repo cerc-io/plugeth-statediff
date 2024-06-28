@@ -41,6 +41,7 @@ type FileWriter interface {
 	upsertTransactionCID(transaction models.TxModel)
 	upsertReceiptCID(rct *models.ReceiptModel)
 	upsertLogCID(logs []*models.LogsModel)
+	upsertWithdrawalCID(models.WithdrawalModel)
 	upsertStateCID(stateNode models.StateNodeModel)
 	upsertStorageCID(storageCID models.StorageNodeModel)
 	upsertIPLD(ipld models.IPLDModel)

@@ -5,7 +5,7 @@ repos:
   - git.vdb.to/cerc-io/plugeth@v1.13.14-cerc-2
   - git.vdb.to/cerc-io/plugeth-statediff
   - git.vdb.to/cerc-io/lighthouse
-  - git.vdb.to/cerc-io/ipld-eth-db@v5.2.1-alpha
+  - git.vdb.to/cerc-io/ipld-eth-db@v5.3.0-alpha
 containers:
   - cerc/plugeth-statediff
   - cerc/plugeth

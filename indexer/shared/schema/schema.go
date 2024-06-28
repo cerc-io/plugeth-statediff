@@ -16,6 +16,19 @@
 
 package schema
 
+var Tables = []*Table{
+	&TableIPLDBlock,
+	&TableNodeInfo,
+	&TableHeader,
+	&TableStateNode,
+	&TableStorageNode,
+	&TableUncle,
+	&TableTransaction,
+	&TableReceipt,
+	&TableLog,
+	&TableWithdrawal,
+}
+
 var TableIPLDBlock = Table{
 	Name: `ipld.blocks`,
 	Columns: []Column{
@@ -52,9 +65,10 @@ var TableHeader = Table{
 		{Name: "receipt_root", Type: Dvarchar},
 		{Name: "uncles_hash", Type: Dvarchar},
 		{Name: "bloom", Type: Dbytea},
-		{Name: "timestamp", Type: Dnumeric},
+		{Name: "timestamp", Type: Dbigint},
 		{Name: "coinbase", Type: Dvarchar},
 		{Name: "canonical", Type: Dboolean},
+		{Name: "withdrawals_root", Type: Dvarchar},
 	},
 	UpsertClause: OnConflict("block_number", "block_hash").Set(
 		"parent_hash",
@@ -70,6 +84,7 @@ var TableHeader = Table{
 		"timestamp",
 		"coinbase",
 		"canonical",
+		"withdrawals_root",
 	)}
 
 var TableStateNode = Table{
@@ -163,6 +178,20 @@ var TableLog = Table{
 		{Name: "topic3", Type: Dvarchar},
 	},
 	UpsertClause: OnConflict("block_number", "header_id", "rct_id", "index"),
+}
+
+var TableWithdrawal = Table{
+	Name: "eth.withdrawal_cids",
+	Columns: []Column{
+		{Name: "block_number", Type: Dbigint},
+		{Name: "header_id", Type: Dvarchar},
+		{Name: "cid", Type: Dtext},
+		{Name: "index", Type: Dinteger},
+		{Name: "validator", Type: Dinteger},
+		{Name: "address", Type: Dvarchar},
+		{Name: "amount", Type: Dinteger},
+	},
+	UpsertClause: OnConflict("block_number", "header_id", "index"),
 }
 
 var TableWatchedAddresses = Table{

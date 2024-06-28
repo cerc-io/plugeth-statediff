@@ -96,6 +96,14 @@ func TestPGXIndexer(t *testing.T) {
 		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
 	})
 
+	t.Run("Publish and index withdrawal IPLDs in a single tx", func(t *testing.T) {
+		setupPGX(t)
+		defer tearDown(t)
+		defer checkTxClosure(t, 1, 0, 1)
+
+		test.DoTestPublishAndIndexWithdrawalIPLDs(t, db)
+	})
+
 	t.Run("Publish and index state IPLDs in a single tx", func(t *testing.T) {
 		setupPGX(t)
 		defer tearDown(t)

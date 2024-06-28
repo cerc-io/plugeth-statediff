@@ -9,7 +9,8 @@ on:
       - ci-test
 
 env:
-  SO_VERSION: v1.1.0-87fffca-202404110321
+  SO_VERSION: roysc/fix-various
+  FIXTURENET_ETH_STACKS_VERSION: plugeth-stack
 
 jobs:
   unit-tests:
@@ -31,34 +32,57 @@ jobs:
     name: Run integration tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: ./plugeth-statediff
+          progress: false
       - name: Build docker image
         run: |
           docker build ./plugeth-statediff -t cerc/plugeth-statediff:local
 
+      - name: "Install Python for ARM on Linux"
+        if: ${{ runner.arch == 'arm64' && runner.os == 'Linux' }}
+        uses: deadsnakes/action@v3.0.1
+        with:
+          python-version: 3.11
+      - name: "Install Python cases other than ARM on Linux"
+        if: ${{ ! (runner.arch == 'arm64' && runner.os == 'Linux') }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: "Print Python version"
+        run: python3 --version
       - name: Install stack-orchestrator
-        run: |
-          curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
-          chmod +x laconic-so
-      - name: Clone system-tests
+        # run: |
+        #   curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
+        #   chmod +x laconic-so
+        #   echo PATH="$PATH:$(pwd)" >> $GITHUB_ENV
+        # FIXME: merge SO fixes and revert
         uses: actions/checkout@v3
+        with:
+          repository: cerc-io/stack-orchestrator
+          ref: ${{ env.SO_VERSION }}
+          path: .tools/stack-orchestrator
+      - name: "Install stack orchestrator"
+        run: pip3 install .tools/stack-orchestrator
+      - name: Clone system-tests
+        uses: actions/checkout@v4
         with:
           repository: cerc-io/system-tests
           ref: v0.1.0-20240411
           path: ./system-tests
           token: ${{ secrets.CICD_REPO_TOKEN }}
+          progress: false
+      - name: Clone fixturenet stack repo
+        uses: actions/checkout@v4
+        with:
+          repository: cerc-io/fixturenet-eth-stacks
+          ref: ${{ env.FIXTURENET_ETH_STACKS_VERSION }}
+          path: ./fixturenet-eth-stacks
+          progress: false
       - name: Run testnet stack
         working-directory: ./plugeth-statediff
-        env:
-          LACONIC_SO: ../laconic-so
-        run: ./scripts/integration-setup.sh
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.11
-
+        run: ./scripts/run-test-stack.sh
       - name: Run tests
         working-directory: ./system-tests
         run: |

@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -29,6 +30,9 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
 	"github.com/cerc-io/plugeth-statediff/indexer/test"
 )
+
+// docker bind mount is slow to sync files
+var delayForDockerSync = 1 * time.Second
 
 func setupCSVIndexer(t *testing.T) {
 	if _, err := os.Stat(file.CSVTestConfig.OutputDir); !errors.Is(err, os.ErrNotExist) {
@@ -53,18 +57,21 @@ func setupCSVIndexer(t *testing.T) {
 func setupCSV(t *testing.T) {
 	setupCSVIndexer(t)
 	test.SetupTestData(t, ind)
+	t.Cleanup(func() { tearDownCSV(t) })
+	time.Sleep(delayForDockerSync)
 }
 
 func setupCSVNonCanonical(t *testing.T) {
 	setupCSVIndexer(t)
 	test.SetupTestDataNonCanonical(t, ind)
+	t.Cleanup(func() { tearDownCSV(t) })
+	time.Sleep(delayForDockerSync)
 }
 
 func TestCSVFileIndexer(t *testing.T) {
 	t.Run("Publish and index header IPLDs in a single tx", func(t *testing.T) {
 		setupCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexHeaderIPLDs(t, db)
 	})
@@ -72,7 +79,6 @@ func TestCSVFileIndexer(t *testing.T) {
 	t.Run("Publish and index transaction IPLDs in a single tx", func(t *testing.T) {
 		setupCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexTransactionIPLDs(t, db)
 	})
@@ -80,7 +86,6 @@ func TestCSVFileIndexer(t *testing.T) {
 	t.Run("Publish and index log IPLDs for multiple receipt of a specific block", func(t *testing.T) {
 		setupCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexLogIPLDs(t, db)
 	})
@@ -88,15 +93,20 @@ func TestCSVFileIndexer(t *testing.T) {
 	t.Run("Publish and index receipt IPLDs in a single tx", func(t *testing.T) {
 		setupCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
+	})
+
+	t.Run("Publish and index withdrawal IPLDs in a single tx", func(t *testing.T) {
+		setupCSV(t)
+		dumpCSVFileData(t)
+
+		test.DoTestPublishAndIndexWithdrawalIPLDs(t, db)
 	})
 
 	t.Run("Publish and index state IPLDs in a single tx", func(t *testing.T) {
 		setupCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexStateIPLDs(t, db)
 	})
@@ -104,7 +114,6 @@ func TestCSVFileIndexer(t *testing.T) {
 	t.Run("Publish and index storage IPLDs in a single tx", func(t *testing.T) {
 		setupCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexStorageIPLDs(t, db)
 	})
@@ -114,7 +123,6 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 	t.Run("Publish and index header", func(t *testing.T) {
 		setupCSVNonCanonical(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.TestPublishAndIndexHeaderNonCanonical(t, db)
 	})
@@ -122,7 +130,6 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 	t.Run("Publish and index transactions", func(t *testing.T) {
 		setupCSVNonCanonical(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexTransactionsNonCanonical(t, db)
 	})
@@ -130,7 +137,6 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 	t.Run("Publish and index receipts", func(t *testing.T) {
 		setupCSVNonCanonical(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexReceiptsNonCanonical(t, db)
 	})
@@ -138,7 +144,6 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 	t.Run("Publish and index logs", func(t *testing.T) {
 		setupCSVNonCanonical(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexLogsNonCanonical(t, db)
 	})
@@ -146,7 +151,6 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 	t.Run("Publish and index state nodes", func(t *testing.T) {
 		setupCSVNonCanonical(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexStateNonCanonical(t, db)
 	})
@@ -154,7 +158,6 @@ func TestCSVFileIndexerNonCanonical(t *testing.T) {
 	t.Run("Publish and index storage nodes", func(t *testing.T) {
 		setupCSVNonCanonical(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.DoTestPublishAndIndexStorageNonCanonical(t, db)
 	})

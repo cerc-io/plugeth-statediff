@@ -25,16 +25,6 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 )
 
-// ListContainsString used to check if a list of strings contains a particular string
-func ListContainsString(sss []string, s string) bool {
-	for _, str := range sss {
-		if s == str {
-			return true
-		}
-	}
-	return false
-}
-
 // DedupFile removes duplicates from the given file
 func DedupFile(filePath string) error {
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDONLY, os.ModePerm)
@@ -86,6 +76,7 @@ func TearDownDB(t *testing.T, db sql.Database) {
 		`TRUNCATE eth.state_cids`,
 		`TRUNCATE eth.storage_cids`,
 		`TRUNCATE eth.log_cids`,
+		`TRUNCATE eth.withdrawal_cids`,
 		`TRUNCATE eth_meta.watched_addresses`,
 	}
 	for _, stm := range statements {

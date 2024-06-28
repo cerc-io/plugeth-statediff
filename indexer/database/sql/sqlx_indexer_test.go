@@ -82,6 +82,14 @@ func TestSQLXIndexer(t *testing.T) {
 		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
 	})
 
+	t.Run("Publish and index withdrawal IPLDs in a single tx", func(t *testing.T) {
+		setupSQLX(t)
+		defer tearDown(t)
+		defer checkTxClosure(t, 0, 0, 0)
+
+		test.DoTestPublishAndIndexWithdrawalIPLDs(t, db)
+	})
+
 	t.Run("Publish and index state IPLDs in a single tx", func(t *testing.T) {
 		setupSQLX(t)
 		defer tearDown(t)

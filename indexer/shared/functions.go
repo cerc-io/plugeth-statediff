@@ -35,3 +35,12 @@ func HandleZeroAddr(to common.Address) string {
 	}
 	return to.String()
 }
+
+// MaybeStringHash calls String on its argument and returns a pointer to the result.
+// When passed nil, it returns nil.
+func MaybeStringHash(hash *common.Hash) string {
+	if hash == nil {
+		return ""
+	}
+	return hash.String()
+}

@@ -53,69 +53,12 @@ type Table struct {
 	UpsertClause ConflictClause
 }
 
-type colfmt = func(interface{}) string
-
-func (tbl *Table) ToCsvRow(args ...interface{}) []string {
-	var row []string
-	for i, col := range tbl.Columns {
-		value := col.Type.formatter()(args[i])
-
-		if col.Array {
-			valueList := funk.Map(args[i], col.Type.formatter()).([]string)
-			value = fmt.Sprintf("{%s}", strings.Join(valueList, ","))
-		}
-
-		row = append(row, value)
-	}
-	return row
-}
-
-func (tbl *Table) VarcharColumns() []string {
-	columns := funk.Filter(tbl.Columns, func(col Column) bool {
-		return col.Type == Dvarchar
-	}).([]Column)
-
-	columnNames := funk.Map(columns, func(col Column) string {
-		return col.Name
-	}).([]string)
-	return columnNames
-}
-
 func OnConflict(target ...string) ConflictClause {
 	return ConflictClause{Target: target}
 }
 func (c ConflictClause) Set(fields ...string) ConflictClause {
 	c.Update = fields
 	return c
-}
-
-// ToInsertStatement returns a Postgres-compatible SQL insert statement for the table
-// using positional placeholders
-func (tbl *Table) ToInsertStatement(upsert bool) string {
-	var colnames, placeholders []string
-	for i, col := range tbl.Columns {
-		colnames = append(colnames, col.Name)
-		placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
-	}
-	suffix := fmt.Sprintf("ON CONFLICT (%s)", strings.Join(tbl.UpsertClause.Target, ", "))
-	if upsert && len(tbl.UpsertClause.Update) != 0 {
-		var update_placeholders []string
-		for _, name := range tbl.UpsertClause.Update {
-			i := funk.IndexOf(tbl.Columns, func(col Column) bool { return col.Name == name })
-			update_placeholders = append(update_placeholders, fmt.Sprintf("$%d", i+1))
-		}
-		suffix += fmt.Sprintf(
-			" DO UPDATE SET (%s) = (%s)",
-			strings.Join(tbl.UpsertClause.Update, ", "), strings.Join(update_placeholders, ", "),
-		)
-	} else {
-		suffix += " DO NOTHING"
-	}
-
-	return fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (%s) %s",
-		tbl.Name, strings.Join(colnames, ", "), strings.Join(placeholders, ", "), suffix,
-	)
 }
 
 // TableName returns a pgx-compatible table name.
@@ -132,11 +75,45 @@ func (tbl *Table) ColumnNames() []string {
 	return names
 }
 
+// PreparedInsert returns a pgx/sqlx-compatible SQL prepared insert statement for the table
+// using positional placeholders.
+// If upsert is true, include an ON CONFLICT clause handling column updates.
+func (tbl *Table) PreparedInsert(upsert bool) string {
+	var colnames, placeholders []string
+	for i, col := range tbl.Columns {
+		colnames = append(colnames, col.Name)
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
+	}
+	suffix := " ON CONFLICT"
+	if len(tbl.UpsertClause.Target) > 0 {
+		suffix += fmt.Sprintf(" (%s)", strings.Join(tbl.UpsertClause.Target, ", "))
+	}
+	if upsert && len(tbl.UpsertClause.Update) != 0 {
+		var update_placeholders []string
+		for _, name := range tbl.UpsertClause.Update {
+			update_placeholders = append(update_placeholders, "EXCLUDED."+name)
+		}
+		suffix += fmt.Sprintf(
+			" DO UPDATE SET (%s) = ROW(%s)",
+			strings.Join(tbl.UpsertClause.Update, ", "), strings.Join(update_placeholders, ", "),
+		)
+	} else {
+		suffix += " DO NOTHING"
+	}
+
+	return fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (%s)",
+		tbl.Name, strings.Join(colnames, ", "), strings.Join(placeholders, ", "),
+	) + suffix
+}
+
+type colfmt = func(interface{}) string
+
 func sprintf(f string) colfmt {
 	return func(x interface{}) string { return fmt.Sprintf(f, x) }
 }
 
-func (typ colType) formatter() colfmt {
+func (typ colType) csvFormatter() colfmt {
 	switch typ {
 	case Dinteger:
 		return sprintf("%d")
@@ -157,6 +134,61 @@ func (typ colType) formatter() colfmt {
 		return sprintf("%s")
 	case Dtext:
 		return sprintf("%s")
+	default:
+		panic("invalid column type")
 	}
-	panic("unreachable")
+}
+
+// ToCsvRow converts a list of values to a list of strings suitable for CSV output.
+func (tbl *Table) ToCsvRow(args ...interface{}) []string {
+	var row []string
+	for i, col := range tbl.Columns {
+		value := col.Type.csvFormatter()(args[i])
+
+		if col.Array {
+			valueList := funk.Map(args[i], col.Type.csvFormatter()).([]string)
+			value = fmt.Sprintf("{%s}", strings.Join(valueList, ","))
+		}
+
+		row = append(row, value)
+	}
+	return row
+}
+
+// VarcharColumns returns the names of columns with type VARCHAR.
+func (tbl *Table) VarcharColumns() []string {
+	columns := funk.Filter(tbl.Columns, func(col Column) bool {
+		return col.Type == Dvarchar
+	}).([]Column)
+
+	columnNames := funk.Map(columns, func(col Column) string {
+		return col.Name
+	}).([]string)
+	return columnNames
+}
+
+func formatSpec(typ colType) string {
+	switch typ {
+	case Dinteger:
+		return "%d"
+	case Dboolean:
+		return "%t"
+	case Dbytea:
+		return `'\x%x'`
+	default:
+		return "'%s'"
+	}
+}
+
+// FmtStringInsert returns a format string for creating a Postgres insert statement.
+func (tbl *Table) FmtStringInsert() string {
+	var colnames, placeholders []string
+	for _, col := range tbl.Columns {
+		colnames = append(colnames, col.Name)
+		placeholders = append(placeholders, formatSpec(col.Type))
+	}
+	return fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (%s);",
+		tbl.Name, strings.Join(colnames, ", "), strings.Join(placeholders, ", "),
+	)
 }

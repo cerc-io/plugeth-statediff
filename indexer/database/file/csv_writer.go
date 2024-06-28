@@ -36,22 +36,8 @@ import (
 	sdtypes "github.com/cerc-io/plugeth-statediff/types"
 )
 
-var (
-	Tables = []*schema.Table{
-		&schema.TableIPLDBlock,
-		&schema.TableNodeInfo,
-		&schema.TableHeader,
-		&schema.TableStateNode,
-		&schema.TableStorageNode,
-		&schema.TableUncle,
-		&schema.TableTransaction,
-		&schema.TableReceipt,
-		&schema.TableLog,
-	}
-)
-
 type tableRow struct {
-	table  schema.Table
+	table  *schema.Table
 	values []interface{}
 }
 
@@ -134,7 +120,7 @@ func NewCSVWriter(path string, watchedAddressesFilePath string, diff bool) (*CSV
 		return nil, fmt.Errorf("unable to create directory '%s': %w", path, err)
 	}
 
-	writers, err := makeFileWriters(path, Tables)
+	writers, err := makeFileWriters(path, schema.Tables)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +150,7 @@ func (csw *CSVWriter) Loop() {
 		for {
 			select {
 			case row := <-csw.rows:
-				err := csw.writers.write(&row.table, row.values...)
+				err := csw.writers.write(row.table, row.values...)
 				if err != nil {
 					panic(fmt.Sprintf("error writing csv buffer: %v", err))
 				}
@@ -204,13 +190,13 @@ func (csw *CSVWriter) Close() error {
 func (csw *CSVWriter) upsertNode(node nodeinfo.Info) {
 	var values []interface{}
 	values = append(values, node.GenesisBlock, node.NetworkID, node.ID, node.ClientName, node.ChainID)
-	csw.rows <- tableRow{schema.TableNodeInfo, values}
+	csw.rows <- tableRow{&schema.TableNodeInfo, values}
 }
 
 func (csw *CSVWriter) upsertIPLD(ipld models.IPLDModel) {
 	var values []interface{}
 	values = append(values, ipld.BlockNumber, ipld.Key, ipld.Data)
-	csw.rows <- tableRow{schema.TableIPLDBlock, values}
+	csw.rows <- tableRow{&schema.TableIPLDBlock, values}
 }
 
 func (csw *CSVWriter) upsertIPLDDirect(blockNumber, key string, value []byte) {
@@ -231,11 +217,25 @@ func (csw *CSVWriter) upsertIPLDNode(blockNumber string, i ipld.IPLD) {
 
 func (csw *CSVWriter) upsertHeaderCID(header models.HeaderModel) {
 	var values []interface{}
-	values = append(values, header.BlockNumber, header.BlockHash, header.ParentHash, header.CID,
-		header.TotalDifficulty, header.NodeIDs, header.Reward, header.StateRoot, header.TxRoot,
-		header.RctRoot, header.UnclesHash, header.Bloom, strconv.FormatUint(header.Timestamp, 10), header.Coinbase,
-		header.Canonical)
-	csw.rows <- tableRow{schema.TableHeader, values}
+	values = append(values,
+		header.BlockNumber,
+		header.BlockHash,
+		header.ParentHash,
+		header.CID,
+		header.TotalDifficulty,
+		header.NodeIDs,
+		header.Reward,
+		header.StateRoot,
+		header.TxRoot,
+		header.RctRoot,
+		header.UnclesHash,
+		header.Bloom,
+		strconv.FormatUint(header.Timestamp, 10),
+		header.Coinbase,
+		header.Canonical,
+		header.WithdrawalsRoot,
+	)
+	csw.rows <- tableRow{&schema.TableHeader, values}
 	metrics.IndexerMetrics.BlocksCounter.Inc(1)
 }
 
@@ -243,14 +243,14 @@ func (csw *CSVWriter) upsertUncleCID(uncle models.UncleModel) {
 	var values []interface{}
 	values = append(values, uncle.BlockNumber, uncle.BlockHash, uncle.HeaderID, uncle.ParentHash, uncle.CID,
 		uncle.Reward, uncle.Index)
-	csw.rows <- tableRow{schema.TableUncle, values}
+	csw.rows <- tableRow{&schema.TableUncle, values}
 }
 
 func (csw *CSVWriter) upsertTransactionCID(transaction models.TxModel) {
 	var values []interface{}
 	values = append(values, transaction.BlockNumber, transaction.HeaderID, transaction.TxHash, transaction.CID, transaction.Dst,
 		transaction.Src, transaction.Index, transaction.Type, transaction.Value)
-	csw.rows <- tableRow{schema.TableTransaction, values}
+	csw.rows <- tableRow{&schema.TableTransaction, values}
 	metrics.IndexerMetrics.TransactionsCounter.Inc(1)
 }
 
@@ -258,7 +258,7 @@ func (csw *CSVWriter) upsertReceiptCID(rct *models.ReceiptModel) {
 	var values []interface{}
 	values = append(values, rct.BlockNumber, rct.HeaderID, rct.TxID, rct.CID, rct.Contract,
 		rct.PostState, rct.PostStatus)
-	csw.rows <- tableRow{schema.TableReceipt, values}
+	csw.rows <- tableRow{&schema.TableReceipt, values}
 	metrics.IndexerMetrics.ReceiptsCounter.Inc(1)
 }
 
@@ -267,9 +267,24 @@ func (csw *CSVWriter) upsertLogCID(logs []*models.LogsModel) {
 		var values []interface{}
 		values = append(values, l.BlockNumber, l.HeaderID, l.CID, l.ReceiptID, l.Address, l.Index, l.Topic0,
 			l.Topic1, l.Topic2, l.Topic3)
-		csw.rows <- tableRow{schema.TableLog, values}
+		csw.rows <- tableRow{&schema.TableLog, values}
 		metrics.IndexerMetrics.LogsCounter.Inc(1)
 	}
+}
+
+func (csw *CSVWriter) upsertWithdrawalCID(withdrawal models.WithdrawalModel) {
+	var values []interface{}
+	values = append(values,
+		withdrawal.BlockNumber,
+		withdrawal.HeaderID,
+		withdrawal.CID,
+		withdrawal.Index,
+		withdrawal.Validator,
+		withdrawal.Address,
+		withdrawal.Amount,
+	)
+	csw.rows <- tableRow{&schema.TableWithdrawal, values}
+	metrics.IndexerMetrics.WithdrawalsCounter.Inc(1)
 }
 
 func (csw *CSVWriter) upsertStateCID(stateNode models.StateNodeModel) {
@@ -281,14 +296,14 @@ func (csw *CSVWriter) upsertStateCID(stateNode models.StateNodeModel) {
 	var values []interface{}
 	values = append(values, stateNode.BlockNumber, stateNode.HeaderID, stateNode.StateKey, stateNode.CID,
 		csw.isDiff, balance, strconv.FormatUint(stateNode.Nonce, 10), stateNode.CodeHash, stateNode.StorageRoot, stateNode.Removed)
-	csw.rows <- tableRow{schema.TableStateNode, values}
+	csw.rows <- tableRow{&schema.TableStateNode, values}
 }
 
 func (csw *CSVWriter) upsertStorageCID(storageCID models.StorageNodeModel) {
 	var values []interface{}
 	values = append(values, storageCID.BlockNumber, storageCID.HeaderID, storageCID.StateKey, storageCID.StorageKey, storageCID.CID,
 		csw.isDiff, storageCID.Value, storageCID.Removed)
-	csw.rows <- tableRow{schema.TableStorageNode, values}
+	csw.rows <- tableRow{&schema.TableStorageNode, values}
 }
 
 // LoadWatchedAddresses loads watched addresses from a file

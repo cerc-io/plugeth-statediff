@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -55,6 +56,8 @@ func setupLegacyCSVIndexer(t *testing.T) {
 func setupLegacyCSV(t *testing.T) {
 	setupLegacyCSVIndexer(t)
 	test.SetupLegacyTestData(t, ind)
+	t.Cleanup(func() { tearDownCSV(t) })
+	time.Sleep(delayForDockerSync)
 }
 
 func dumpCSVFileData(t *testing.T) {
@@ -64,7 +67,7 @@ func dumpCSVFileData(t *testing.T) {
 
 	localOutputDir := filepath.Join(workingDir, file.CSVTestConfig.OutputDir)
 
-	for _, tbl := range file.Tables {
+	for _, tbl := range schema.Tables {
 		err := test_helpers.DedupFile(file.TableFilePath(localOutputDir, tbl.Name))
 		require.NoError(t, err)
 
@@ -89,6 +92,7 @@ func dumpCSVFileData(t *testing.T) {
 func resetAndDumpWatchedAddressesCSVFileData(t *testing.T) {
 	test_helpers.TearDownDB(t, db)
 
+	time.Sleep(delayForDockerSync)
 	outputFilePath := filepath.Join(dbDirectory, file.CSVTestConfig.WatchedAddressesFilePath)
 	stmt := fmt.Sprintf(pgCopyStatement, schema.TableWatchedAddresses.Name, outputFilePath)
 
@@ -111,7 +115,6 @@ func TestLegacyCSVFileIndexer(t *testing.T) {
 	t.Run("Publish and index header IPLDs", func(t *testing.T) {
 		setupLegacyCSV(t)
 		dumpCSVFileData(t)
-		defer tearDownCSV(t)
 
 		test.TestLegacyIndexer(t, db)
 	})

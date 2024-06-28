@@ -18,6 +18,7 @@ package postgres
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
@@ -43,7 +44,9 @@ type DB struct {
 
 // MaxHeaderStm satisfies the sql.Statements interface
 func (db *DB) MaxHeaderStm() string {
-	return fmt.Sprintf("SELECT block_number, block_hash, parent_hash, cid, td, node_ids, reward, state_root, tx_root, receipt_root, uncles_hash, bloom, timestamp, coinbase FROM %s ORDER BY block_number DESC LIMIT 1", schema.TableHeader.Name)
+	return fmt.Sprintf("SELECT %s FROM %s ORDER BY block_number DESC LIMIT 1",
+		strings.Join(schema.TableHeader.ColumnNames(), ","),
+		schema.TableHeader.Name)
 }
 
 // ExistsHeaderStm satisfies the sql.Statements interface
@@ -59,7 +62,7 @@ func (db *DB) DetectGapsStm() string {
 // InsertHeaderStm satisfies the sql.Statements interface
 // Stm == Statement
 func (db *DB) InsertHeaderStm() string {
-	return schema.TableHeader.ToInsertStatement(db.upsert)
+	return schema.TableHeader.PreparedInsert(db.upsert)
 }
 
 // SetCanonicalHeaderStm satisfies the sql.Statements interface
@@ -70,37 +73,42 @@ func (db *DB) SetCanonicalHeaderStm() string {
 
 // InsertUncleStm satisfies the sql.Statements interface
 func (db *DB) InsertUncleStm() string {
-	return schema.TableUncle.ToInsertStatement(db.upsert)
+	return schema.TableUncle.PreparedInsert(db.upsert)
 }
 
 // InsertTxStm satisfies the sql.Statements interface
 func (db *DB) InsertTxStm() string {
-	return schema.TableTransaction.ToInsertStatement(db.upsert)
+	return schema.TableTransaction.PreparedInsert(db.upsert)
 }
 
 // InsertRctStm satisfies the sql.Statements interface
 func (db *DB) InsertRctStm() string {
-	return schema.TableReceipt.ToInsertStatement(db.upsert)
+	return schema.TableReceipt.PreparedInsert(db.upsert)
 }
 
 // InsertLogStm satisfies the sql.Statements interface
 func (db *DB) InsertLogStm() string {
-	return schema.TableLog.ToInsertStatement(db.upsert)
+	return schema.TableLog.PreparedInsert(db.upsert)
+}
+
+// InsertLogStm satisfies the sql.Statements interface
+func (db *DB) InsertWithdrawalStm() string {
+	return schema.TableWithdrawal.PreparedInsert(db.upsert)
 }
 
 // InsertStateStm satisfies the sql.Statements interface
 func (db *DB) InsertStateStm() string {
-	return schema.TableStateNode.ToInsertStatement(db.upsert)
+	return schema.TableStateNode.PreparedInsert(db.upsert)
 }
 
 // InsertStorageStm satisfies the sql.Statements interface
 func (db *DB) InsertStorageStm() string {
-	return schema.TableStorageNode.ToInsertStatement(db.upsert)
+	return schema.TableStorageNode.PreparedInsert(db.upsert)
 }
 
 // InsertIPLDStm satisfies the sql.Statements interface
 func (db *DB) InsertIPLDStm() string {
-	return schema.TableIPLDBlock.ToInsertStatement(db.upsert)
+	return schema.TableIPLDBlock.PreparedInsert(db.upsert)
 }
 
 // InsertIPLDsStm satisfies the sql.Statements interface

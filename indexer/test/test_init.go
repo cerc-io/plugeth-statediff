@@ -38,12 +38,14 @@ var (
 	watchedAddressesPgGet = `SELECT *
 					FROM eth_meta.watched_addresses`
 	tx1, tx2, tx3, tx4, tx5, rct1, rct2, rct3, rct4, rct5            []byte
+	wd1, wd2                                                         []byte
 	nonCanonicalBlockRct1, nonCanonicalBlockRct2                     []byte
 	nonCanonicalBlock2Rct1, nonCanonicalBlock2Rct2                   []byte
 	mockBlock, mockNonCanonicalBlock, mockNonCanonicalBlock2         *types.Block
 	headerCID, mockNonCanonicalHeaderCID, mockNonCanonicalHeader2CID cid.Cid
 	trx1CID, trx2CID, trx3CID, trx4CID, trx5CID                      cid.Cid
 	rct1CID, rct2CID, rct3CID, rct4CID, rct5CID                      cid.Cid
+	wd1CID, wd2CID                                                   cid.Cid
 	nonCanonicalBlockRct1CID, nonCanonicalBlockRct2CID               cid.Cid
 	nonCanonicalBlock2Rct1CID, nonCanonicalBlock2Rct2CID             cid.Cid
 	state1CID, state2CID, storageCID                                 cid.Cid
@@ -114,6 +116,18 @@ func init() {
 	copy(rct5, buf.Bytes())
 	buf.Reset()
 
+	// encode mock withdrawals
+	// wds
+	mocks.MockWithdrawals.EncodeIndex(0, buf)
+	wd1 = make([]byte, buf.Len())
+	copy(wd1, buf.Bytes())
+	buf.Reset()
+
+	mocks.MockWithdrawals.EncodeIndex(1, buf)
+	wd2 = make([]byte, buf.Len())
+	copy(wd2, buf.Bytes())
+	buf.Reset()
+
 	// encode mock receipts for non-canonical blocks
 	nonCanonicalBlockRcts.EncodeIndex(0, buf)
 	nonCanonicalBlockRct1 = make([]byte, buf.Len())
@@ -151,6 +165,9 @@ func init() {
 	rct3CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct3, multihash.KECCAK_256)
 	rct4CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct4, multihash.KECCAK_256)
 	rct5CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, rct5, multihash.KECCAK_256)
+
+	wd1CID, _ = ipld.RawdataToCid(ipld.MEthWithdrawal, wd1, multihash.KECCAK_256)
+	wd2CID, _ = ipld.RawdataToCid(ipld.MEthWithdrawal, wd2, multihash.KECCAK_256)
 
 	// create raw receipts for non-canonical blocks
 	nonCanonicalBlockRct1CID, _ = ipld.RawdataToCid(ipld.MEthTxReceipt, nonCanonicalBlockRct1, multihash.KECCAK_256)

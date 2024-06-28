@@ -32,6 +32,7 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/ipld"
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
 	nodeinfo "github.com/cerc-io/plugeth-statediff/indexer/node"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
 	"github.com/cerc-io/plugeth-statediff/types"
 )
 
@@ -145,8 +146,8 @@ const (
 	ipldInsert = "INSERT INTO ipld.blocks (block_number, key, data) VALUES ('%s', '%s', '\\x%x');\n"
 
 	headerInsert = "INSERT INTO eth.header_cids (block_number, block_hash, parent_hash, cid, td, node_ids, reward, " +
-		"state_root, tx_root, receipt_root, uncles_hash, bloom, timestamp, coinbase, canonical) VALUES " +
-		"('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '\\x%x', %d, '%s', %t);\n"
+		"state_root, tx_root, receipt_root, uncles_hash, bloom, timestamp, coinbase, canonical, withdrawals_root) VALUES " +
+		"('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '\\x%x', %d, '%s', %t, '%s');\n"
 
 	uncleInsert = "INSERT INTO eth.uncle_cids (block_number, block_hash, header_id, parent_hash, cid, reward, index) VALUES " +
 		"('%s', '%s', '%s', '%s', '%s', '%s', %d);\n"
@@ -165,6 +166,10 @@ const (
 
 	storageInsert = "INSERT INTO eth.storage_cids (block_number, header_id, state_leaf_key, storage_leaf_key, cid, " +
 		"removed, diff, val) VALUES ('%s', '%s', '%s', '%s', '%s', %t, %t, '\\x%x');\n"
+)
+
+var (
+	withdrawalsInsert = schema.TableWithdrawal.FmtStringInsert() + ";\n"
 )
 
 func (sqw *SQLWriter) upsertNode(node nodeinfo.Info) {
@@ -192,9 +197,24 @@ func (sqw *SQLWriter) upsertIPLDNode(blockNumber string, i ipld.IPLD) {
 }
 
 func (sqw *SQLWriter) upsertHeaderCID(header models.HeaderModel) {
-	stmt := fmt.Sprintf(headerInsert, header.BlockNumber, header.BlockHash, header.ParentHash, header.CID,
-		header.TotalDifficulty, formatPostgresStringArray(header.NodeIDs), header.Reward, header.StateRoot, header.TxRoot,
-		header.RctRoot, header.UnclesHash, header.Bloom, header.Timestamp, header.Coinbase, header.Canonical)
+	stmt := fmt.Sprintf(headerInsert,
+		header.BlockNumber,
+		header.BlockHash,
+		header.ParentHash,
+		header.CID,
+		header.TotalDifficulty,
+		formatPostgresStringArray(header.NodeIDs),
+		header.Reward,
+		header.StateRoot,
+		header.TxRoot,
+		header.RctRoot,
+		header.UnclesHash,
+		header.Bloom,
+		header.Timestamp,
+		header.Coinbase,
+		header.Canonical,
+		header.WithdrawalsRoot,
+	)
 	sqw.stmts <- []byte(stmt)
 	metrics.IndexerMetrics.BlocksCounter.Inc(1)
 }
@@ -222,6 +242,19 @@ func (sqw *SQLWriter) upsertLogCID(logs []*models.LogsModel) {
 			l.Topic1, l.Topic2, l.Topic3))
 		metrics.IndexerMetrics.LogsCounter.Inc(1)
 	}
+}
+
+func (sqw *SQLWriter) upsertWithdrawalCID(withdrawal models.WithdrawalModel) {
+	sqw.stmts <- []byte(fmt.Sprintf(withdrawalsInsert,
+		withdrawal.BlockNumber,
+		withdrawal.HeaderID,
+		withdrawal.CID,
+		withdrawal.Index,
+		withdrawal.Validator,
+		withdrawal.Address,
+		withdrawal.Amount,
+	))
+	metrics.IndexerMetrics.WithdrawalsCounter.Inc(1)
 }
 
 func (sqw *SQLWriter) upsertStateCID(stateNode models.StateNodeModel) {

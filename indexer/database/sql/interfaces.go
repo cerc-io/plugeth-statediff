@@ -54,6 +54,7 @@ type Statements interface {
 	InsertTxStm() string
 	InsertRctStm() string
 	InsertLogStm() string
+	InsertWithdrawalStm() string
 	InsertStateStm() string
 	InsertStorageStm() string
 	InsertIPLDStm() string

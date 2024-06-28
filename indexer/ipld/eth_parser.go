@@ -22,25 +22,29 @@ import (
 
 // FromBlockAndReceipts takes a block and processes it
 // to return it a set of IPLD nodes for further processing.
-func FromBlockAndReceipts(block *types.Block, receipts []*types.Receipt) ([]*EthTx, []*EthReceipt, [][]*EthLog, error) {
+func FromBlockAndReceipts(block *types.Block, receipts []*types.Receipt) ([]IPLD, []IPLD, [][]IPLD, []IPLD, error) {
 	// Process the txs
 	txNodes, err := processTransactions(block.Transactions())
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+	withdrawalNodes, err := processWithdrawals(block.Withdrawals())
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	// Process the receipts and logs
 	rctNodes, logNodes, err := processReceiptsAndLogs(receipts)
 
-	return txNodes, rctNodes, logNodes, err
+	return txNodes, rctNodes, logNodes, withdrawalNodes, err
 }
 
 // processTransactions will take the found transactions in a parsed block body
 // to return IPLD node slices for eth-tx
-func processTransactions(txs []*types.Transaction) ([]*EthTx, error) {
-	var ethTxNodes []*EthTx
+func processTransactions(txs []*types.Transaction) ([]IPLD, error) {
+	var ethTxNodes []IPLD
 	for _, tx := range txs {
-		ethTx, err := NewEthTx(tx)
+		ethTx, err := encodeTx(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -50,12 +54,25 @@ func processTransactions(txs []*types.Transaction) ([]*EthTx, error) {
 	return ethTxNodes, nil
 }
 
+func processWithdrawals(withdrawals []*types.Withdrawal) ([]IPLD, error) {
+	var withdrawalNodes []IPLD
+	for _, withdrawal := range withdrawals {
+		ethW, err := encodeWithdrawal(withdrawal)
+		if err != nil {
+			return nil, err
+		}
+		withdrawalNodes = append(withdrawalNodes, ethW)
+	}
+
+	return withdrawalNodes, nil
+}
+
 // processReceiptsAndLogs will take in receipts
 // to return IPLD node slices for eth-rct and eth-log
-func processReceiptsAndLogs(rcts []*types.Receipt) ([]*EthReceipt, [][]*EthLog, error) {
+func processReceiptsAndLogs(rcts []*types.Receipt) ([]IPLD, [][]IPLD, error) {
 	// Pre allocating memory.
-	ethRctNodes := make([]*EthReceipt, len(rcts))
-	ethLogNodes := make([][]*EthLog, len(rcts))
+	ethRctNodes := make([]IPLD, len(rcts))
+	ethLogNodes := make([][]IPLD, len(rcts))
 
 	for idx, rct := range rcts {
 		logNodes, err := processLogs(rct.Logs)
@@ -63,7 +80,7 @@ func processReceiptsAndLogs(rcts []*types.Receipt) ([]*EthReceipt, [][]*EthLog, 
 			return nil, nil, err
 		}
 
-		ethRct, err := NewReceipt(rct)
+		ethRct, err := encodeReceipt(rct)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -75,10 +92,10 @@ func processReceiptsAndLogs(rcts []*types.Receipt) ([]*EthReceipt, [][]*EthLog, 
 	return ethRctNodes, ethLogNodes, nil
 }
 
-func processLogs(logs []*types.Log) ([]*EthLog, error) {
-	logNodes := make([]*EthLog, len(logs))
+func processLogs(logs []*types.Log) ([]IPLD, error) {
+	logNodes := make([]IPLD, len(logs))
 	for idx, log := range logs {
-		logNode, err := NewLog(log)
+		logNode, err := encodeLog(log)
 		if err != nil {
 			return nil, err
 		}

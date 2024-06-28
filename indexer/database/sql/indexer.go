@@ -105,7 +105,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}
 
 	// Generate the block iplds
-	txNodes, rctNodes, logNodes, err := ipld.FromBlockAndReceipts(block, receipts)
+	txNodes, rctNodes, logNodes, wdNodes, err := ipld.FromBlockAndReceipts(block, receipts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating IPLD nodes from block and receipts: %w", err)
 	}
@@ -148,16 +148,18 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	}
 	metrics2.IndexerMetrics.UncleProcessingTimer.Update(time.Since(t))
 	t = time.Now()
-	// Publish and index receipts and txs
-	err = sdi.processReceiptsAndTxs(batch, processArgs{
+
+	err = sdi.processObjects(batch, processArgs{
 		headerID:    headerID,
 		blockNumber: block.Number(),
 		blockTime:   block.Time(),
 		receipts:    receipts,
+		withdrawals: block.Withdrawals(),
 		txs:         transactions,
 		rctNodes:    rctNodes,
 		txNodes:     txNodes,
 		logNodes:    logNodes,
+		wdNodes:     wdNodes,
 	})
 	if err != nil {
 		return nil, err
@@ -185,7 +187,7 @@ func (sdi *StateDiffIndexer) PushHeader(batch interfaces.Batch, header *types.He
 		return "", fmt.Errorf("sql: batch is expected to be of type %T, got %T", &BatchTx{}, batch)
 	}
 	// Process the header
-	headerNode, err := ipld.NewEthHeader(header)
+	headerNode, err := ipld.EncodeHeader(header)
 	if err != nil {
 		return "", err
 	}
@@ -208,6 +210,7 @@ func (sdi *StateDiffIndexer) PushHeader(batch interfaces.Batch, header *types.He
 		Timestamp:       header.Time,
 		Coinbase:        header.Coinbase.String(),
 		Canonical:       true,
+		WithdrawalsRoot: shared.MaybeStringHash(header.WithdrawalsHash),
 	})
 }
 
@@ -258,13 +261,15 @@ type processArgs struct {
 	blockTime   uint64
 	receipts    types.Receipts
 	txs         types.Transactions
-	rctNodes    []*ipld.EthReceipt
-	txNodes     []*ipld.EthTx
-	logNodes    [][]*ipld.EthLog
+	withdrawals types.Withdrawals
+	rctNodes    []ipld.IPLD
+	txNodes     []ipld.IPLD
+	logNodes    [][]ipld.IPLD
+	wdNodes     []ipld.IPLD
 }
 
-// processReceiptsAndTxs publishes and indexes receipt and transaction IPLDs in Postgres
-func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *BatchTx, args processArgs) error {
+// processObjects publishes and indexes receipt and transaction IPLDs in Postgres
+func (sdi *StateDiffIndexer) processObjects(tx *BatchTx, args processArgs) error {
 	// Process receipts and txs
 	signer := types.MakeSigner(sdi.chainConfig, args.blockNumber, args.blockTime)
 	for i, receipt := range args.receipts {
@@ -348,7 +353,23 @@ func (sdi *StateDiffIndexer) processReceiptsAndTxs(tx *BatchTx, args processArgs
 			return err
 		}
 	}
-
+	// Process withdrawals
+	for i, withdrawal := range args.withdrawals {
+		wdNode := args.wdNodes[i]
+		tx.cacheIPLD(wdNode)
+		wdModel := models.WithdrawalModel{
+			BlockNumber: args.blockNumber.String(),
+			HeaderID:    args.headerID,
+			CID:         wdNode.Cid().String(),
+			Index:       withdrawal.Index,
+			Validator:   withdrawal.Validator,
+			Address:     withdrawal.Address.String(),
+			Amount:      withdrawal.Amount,
+		}
+		if err := sdi.dbWriter.upsertWithdrawalCID(tx.dbtx, wdModel); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

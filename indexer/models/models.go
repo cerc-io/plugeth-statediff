@@ -42,6 +42,7 @@ type HeaderModel struct {
 	Timestamp       uint64         `db:"timestamp"`
 	Coinbase        string         `db:"coinbase"`
 	Canonical       bool           `db:"canonical"`
+	WithdrawalsRoot string         `db:"withdrawals_root"`
 }
 
 // UncleModel is the db model for eth.uncle_cids
@@ -105,7 +106,7 @@ type StorageNodeModel struct {
 	Value       []byte `db:"val"`
 }
 
-// LogsModel is the db model for eth.logs
+// LogsModel is the db model for eth.log_cids
 type LogsModel struct {
 	BlockNumber string `db:"block_number"`
 	HeaderID    string `db:"header_id"`
@@ -117,4 +118,15 @@ type LogsModel struct {
 	Topic1      string `db:"topic1"`
 	Topic2      string `db:"topic2"`
 	Topic3      string `db:"topic3"`
+}
+
+// WithdrawalModel is the db model for eth.withdrawal_cids
+type WithdrawalModel struct {
+	BlockNumber string `db:"block_number"`
+	HeaderID    string `db:"header_id"`
+	CID         string `db:"cid"`
+	Index       uint64 `db:"index"`
+	Validator   uint64 `db:"validator"`
+	Address     string `db:"address"`
+	Amount      uint64 `db:"amount"`
 }

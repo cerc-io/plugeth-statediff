@@ -22,6 +22,7 @@ func ClearDB(db *sqlx.DB) error {
 		`TRUNCATE eth.state_cids`,
 		`TRUNCATE eth.storage_cids`,
 		`TRUNCATE eth.log_cids`,
+		`TRUNCATE eth.withdrawal_cids`,
 		`TRUNCATE eth_meta.watched_addresses`,
 	}
 	for _, stm := range statements {

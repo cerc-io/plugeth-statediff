@@ -19,8 +19,8 @@ package mocks
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
 	"math/big"
+	"math/rand"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -39,6 +39,9 @@ import (
 
 // Test variables
 var (
+	// RNG for deterministically generated keys
+	rng = rand.New(rand.NewSource(0))
+
 	// block data
 	TestChainConfig = params.MainnetChainConfig
 	BlockNumber     = TestChainConfig.LondonBlock
@@ -58,15 +61,19 @@ var (
 		Coinbase:    common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476777"),
 	}
 	MockTransactions, MockReceipts, SenderAddr = createTransactionsAndReceipts(TestChainConfig, BlockNumber, BlockTime)
-	MockBlock                                  = types.NewBlock(&MockHeader, MockTransactions, nil, MockReceipts, trie.NewEmpty(nil))
-	MockHeaderRlp, _                           = rlp.EncodeToBytes(MockBlock.Header())
+	MockWithdrawals                            = types.Withdrawals{
+		{Index: 0, Validator: 1, Address: Address, Amount: 1000000000},
+		{Index: 1, Validator: 5, Address: AnotherAddress, Amount: 2000000000},
+	}
+	MockBlock        = types.NewBlockWithWithdrawals(&MockHeader, MockTransactions, nil, MockReceipts, MockWithdrawals, trie.NewEmpty(nil))
+	MockHeaderRlp, _ = rlp.EncodeToBytes(MockBlock.Header())
 
 	// non-canonical block at London height
 	// includes 2nd and 5th transactions from the canonical block
 	MockNonCanonicalHeader            = MockHeader
 	MockNonCanonicalBlockTransactions = types.Transactions{MockTransactions[1], MockTransactions[4]}
 	MockNonCanonicalBlockReceipts     = createNonCanonicalBlockReceipts(TestChainConfig, BlockNumber, BlockTime, MockNonCanonicalBlockTransactions)
-	MockNonCanonicalBlock             = types.NewBlock(&MockNonCanonicalHeader, MockNonCanonicalBlockTransactions, nil, MockNonCanonicalBlockReceipts, trie.NewEmpty(nil))
+	MockNonCanonicalBlock             = types.NewBlockWithWithdrawals(&MockNonCanonicalHeader, MockNonCanonicalBlockTransactions, nil, MockNonCanonicalBlockReceipts, MockWithdrawals[:1], trie.NewEmpty(nil))
 	MockNonCanonicalHeaderRlp, _      = rlp.EncodeToBytes(MockNonCanonicalBlock.Header())
 
 	// non-canonical block at London height + 1
@@ -86,7 +93,7 @@ var (
 	}
 	MockNonCanonicalBlock2Transactions = types.Transactions{MockTransactions[2], MockTransactions[4]}
 	MockNonCanonicalBlock2Receipts     = createNonCanonicalBlockReceipts(TestChainConfig, Block2Number, BlockTime, MockNonCanonicalBlock2Transactions)
-	MockNonCanonicalBlock2             = types.NewBlock(&MockNonCanonicalHeader2, MockNonCanonicalBlock2Transactions, nil, MockNonCanonicalBlock2Receipts, trie.NewEmpty(nil))
+	MockNonCanonicalBlock2             = types.NewBlockWithWithdrawals(&MockNonCanonicalHeader2, MockNonCanonicalBlock2Transactions, nil, MockNonCanonicalBlock2Receipts, types.Withdrawals{}, trie.NewEmpty(nil))
 	MockNonCanonicalHeader2Rlp, _      = rlp.EncodeToBytes(MockNonCanonicalBlock2.Header())
 
 	Address                     = common.HexToAddress("0xaE9BEa628c4Ce503DcFD7E305CaB4e29E7476592")
@@ -348,7 +355,10 @@ func NewLegacyData(config *params.ChainConfig) *LegacyData {
 
 	mockTransactions, mockReceipts, senderAddr := createLegacyTransactionsAndReceipts(config, blockNumber)
 	mockBlock := types.NewBlock(&mockHeader, mockTransactions, nil, mockReceipts, trie.NewEmpty(nil))
-	mockHeaderRlp, _ := rlp.EncodeToBytes(mockBlock.Header())
+	mockHeaderRlp, err := rlp.EncodeToBytes(mockBlock.Header())
+	if err != nil {
+		panic(err)
+	}
 	contractAddress := crypto.CreateAddress(senderAddr, mockTransactions[2].Nonce())
 
 	return &LegacyData{
@@ -388,7 +398,7 @@ func createLegacyTransactionsAndReceipts(config *params.ChainConfig, blockNumber
 	blockTime := uint64(0)
 	transactionSigner := types.MakeSigner(config, blockNumber, blockTime)
 	mockCurve := elliptic.P256()
-	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rand.Reader)
+	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rng)
 	if err != nil {
 		log.Crit(err.Error())
 	}
@@ -460,7 +470,7 @@ func createTransactionsAndReceipts(config *params.ChainConfig, blockNumber *big.
 
 	transactionSigner := types.MakeSigner(config, blockNumber, blockTime)
 	mockCurve := elliptic.P256()
-	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rand.Reader)
+	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rng)
 	if err != nil {
 		log.Crit(err.Error())
 	}
@@ -524,7 +534,7 @@ func createTransactionsAndReceipts(config *params.ChainConfig, blockNumber *big.
 func createNonCanonicalBlockReceipts(config *params.ChainConfig, blockNumber *big.Int, blockTime uint64, transactions types.Transactions) types.Receipts {
 	transactionSigner := types.MakeSigner(config, blockNumber, blockTime)
 	mockCurve := elliptic.P256()
-	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rand.Reader)
+	mockPrvKey, err := ecdsa.GenerateKey(mockCurve, rng)
 	if err != nil {
 		log.Crit(err.Error())
 	}

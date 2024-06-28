@@ -93,6 +93,14 @@ func TestSQLFileIndexer(t *testing.T) {
 		test.DoTestPublishAndIndexReceiptIPLDs(t, db)
 	})
 
+	t.Run("Publish and index withdrawal IPLDs in a single tx", func(t *testing.T) {
+		setup(t)
+		dumpFileData(t)
+		defer tearDown(t)
+
+		test.DoTestPublishAndIndexWithdrawalIPLDs(t, db)
+	})
+
 	t.Run("Publish and index state IPLDs in a single tx", func(t *testing.T) {
 		setup(t)
 		dumpFileData(t)

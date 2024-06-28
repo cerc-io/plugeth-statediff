@@ -95,6 +95,7 @@ func (w *Writer) maxHeader() (*models.HeaderModel, error) {
 		&model.Timestamp,
 		&model.Coinbase,
 		&model.Canonical,
+		&model.WithdrawalsRoot,
 	)
 	model.BlockNumber = strconv.FormatUint(number, 10)
 	model.TotalDifficulty = strconv.FormatUint(td, 10)
@@ -125,6 +126,7 @@ func (w *Writer) upsertHeaderCID(tx Tx, header models.HeaderModel) error {
 		header.Timestamp,
 		header.Coinbase,
 		header.Canonical,
+		header.WithdrawalsRoot,
 	)
 	if err != nil {
 		return insertError{"eth.header_cids", err, w.db.InsertHeaderStm(), header}
@@ -283,6 +285,41 @@ func (w *Writer) upsertLogCID(tx Tx, logs []*models.LogsModel) error {
 			metrics.IndexerMetrics.LogsCounter.Inc(1)
 		}
 	}
+	return nil
+}
+
+func (w *Writer) upsertWithdrawalCID(tx Tx, withdrawal models.WithdrawalModel) error {
+	if w.useCopyForTx(tx) {
+		blockNum, err := strconv.ParseUint(withdrawal.BlockNumber, 10, 64)
+		if err != nil {
+			return insertError{"eth.withdrawal_cids", err, "COPY", withdrawal}
+		}
+
+		_, err = tx.CopyFrom(w.db.Context(), schema.TableWithdrawal.TableName(), schema.TableWithdrawal.ColumnNames(),
+			toRows(toRow(blockNum,
+				withdrawal.HeaderID,
+				withdrawal.CID,
+				withdrawal.Index,
+				withdrawal.Validator,
+				withdrawal.Address,
+				withdrawal.Amount)))
+		if err != nil {
+			return insertError{"eth.withdrawal_cids", err, "COPY", withdrawal}
+		}
+	} else {
+		_, err := tx.Exec(w.db.Context(), w.db.InsertWithdrawalStm(),
+			withdrawal.BlockNumber,
+			withdrawal.HeaderID,
+			withdrawal.CID,
+			withdrawal.Index,
+			withdrawal.Validator,
+			withdrawal.Address,
+			withdrawal.Amount)
+		if err != nil {
+			return insertError{"eth.withdrawal_cids", err, w.db.InsertWithdrawalStm(), withdrawal}
+		}
+	}
+	metrics.IndexerMetrics.WithdrawalsCounter.Inc(1)
 	return nil
 }
 

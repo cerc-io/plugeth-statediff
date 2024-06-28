@@ -1,6 +1,6 @@
 # Using image with same alpine as plugeth,
 # but go 1.21 to evade https://github.com/Consensys/gnark-crypto/issues/468
-FROM golang:1.21-alpine3.18 as builder
+FROM golang:1.21-alpine as builder
 
 RUN apk add --no-cache gcc musl-dev binutils-gold linux-headers git
 

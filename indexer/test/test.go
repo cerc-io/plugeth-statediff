@@ -33,10 +33,9 @@ import (
 	"github.com/cerc-io/plugeth-statediff/indexer/mocks"
 	"github.com/cerc-io/plugeth-statediff/indexer/models"
 	"github.com/cerc-io/plugeth-statediff/indexer/shared"
-	"github.com/cerc-io/plugeth-statediff/indexer/test_helpers"
 )
 
-// SetupTestData indexes a single mock block along with it's state nodes
+// SetupTestData indexes a single mock block along with its state nodes
 func SetupTestData(t *testing.T, ind interfaces.StateDiffIndexer) {
 	var tx interfaces.Batch
 	tx, err = ind.PushBlock(
@@ -111,11 +110,11 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 		t.Fatal(err)
 	}
 	require.Equal(t, 5, len(trxs))
-	expectTrue(t, test_helpers.ListContainsString(trxs, trx1CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(trxs, trx2CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(trxs, trx3CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(trxs, trx4CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(trxs, trx5CID.String()))
+	require.Contains(t, trxs, trx1CID.String())
+	require.Contains(t, trxs, trx2CID.String())
+	require.Contains(t, trxs, trx3CID.String())
+	require.Contains(t, trxs, trx4CID.String())
+	require.Contains(t, trxs, trx5CID.String())
 
 	transactions := mocks.MockBlock.Transactions()
 	type txResult struct {
@@ -257,11 +256,11 @@ func DoTestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 		t.Fatal(err)
 	}
 	require.Equal(t, 5, len(rcts))
-	expectTrue(t, test_helpers.ListContainsString(rcts, rct1CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(rcts, rct2CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(rcts, rct3CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(rcts, rct4CID.String()))
-	expectTrue(t, test_helpers.ListContainsString(rcts, rct5CID.String()))
+	require.Contains(t, rcts, rct1CID.String())
+	require.Contains(t, rcts, rct2CID.String())
+	require.Contains(t, rcts, rct3CID.String())
+	require.Contains(t, rcts, rct4CID.String())
+	require.Contains(t, rcts, rct5CID.String())
 
 	for idx, c := range rcts {
 		result := make([]models.IPLDModel, 0)
@@ -331,6 +330,41 @@ func DoTestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 				t.Fatal(err)
 			}
 			require.Equal(t, mocks.ExpectedPostState3, postState)
+		}
+	}
+}
+
+func DoTestPublishAndIndexWithdrawalIPLDs(t *testing.T, db sql.Database) {
+	// check that withdrawals were properly indexed and published
+	wds := make([]string, 0)
+	pgStr := `SELECT withdrawal_cids.cid FROM eth.withdrawal_cids
+		INNER JOIN eth.header_cids ON (withdrawal_cids.header_id = header_cids.block_hash)
+		WHERE header_cids.block_number = $1
+		ORDER BY withdrawal_cids.index`
+	err = db.Select(context.Background(), &wds, pgStr, mocks.BlockNumber.Uint64())
+	if err != nil {
+		t.Fatal(err)
+	}
+	require.Equal(t, 2, len(wds))
+	require.Contains(t, wds, wd1CID.String())
+	require.Contains(t, wds, wd2CID.String())
+
+	for _, c := range wds {
+		dc, err := cid.Decode(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var data []byte
+		err = db.Get(context.Background(), &data, ipfsPgGet, dc.String(), mocks.BlockNumber.Uint64())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		switch c {
+		case wd1CID.String():
+			require.Equal(t, wd1, data)
+		case wd2CID.String():
+			require.Equal(t, wd2, data)
 		}
 	}
 }
@@ -594,7 +628,7 @@ func SetupTestDataNonCanonical(t *testing.T, ind interfaces.StateDiffIndexer) {
 func TestPublishAndIndexHeaderNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed headers
 	pgStr := `SELECT CAST(block_number as TEXT), block_hash, cid, cast(td AS TEXT), cast(reward AS TEXT),
-			tx_root, receipt_root, uncles_hash, coinbase
+			tx_root, receipt_root, uncles_hash, coinbase, withdrawals_root
 			FROM eth.header_cids
 			ORDER BY block_number`
 	headerRes := make([]models.HeaderModel, 0)
@@ -616,6 +650,7 @@ func TestPublishAndIndexHeaderNonCanonical(t *testing.T, db sql.Database) {
 			RctRoot:         mockBlock.ReceiptHash().String(),
 			UnclesHash:      mockBlock.UncleHash().String(),
 			Coinbase:        mocks.MockHeader.Coinbase.String(),
+			WithdrawalsRoot: shared.MaybeStringHash(mockBlock.Header().WithdrawalsHash),
 		},
 		{
 			BlockNumber:     mockNonCanonicalBlock.Number().String(),
@@ -626,6 +661,7 @@ func TestPublishAndIndexHeaderNonCanonical(t *testing.T, db sql.Database) {
 			RctRoot:         mockNonCanonicalBlock.ReceiptHash().String(),
 			UnclesHash:      mockNonCanonicalBlock.UncleHash().String(),
 			Coinbase:        mocks.MockNonCanonicalHeader.Coinbase.String(),
+			WithdrawalsRoot: shared.MaybeStringHash(mockNonCanonicalBlock.Header().WithdrawalsHash),
 		},
 		{
 			BlockNumber:     mockNonCanonicalBlock2.Number().String(),
@@ -636,6 +672,7 @@ func TestPublishAndIndexHeaderNonCanonical(t *testing.T, db sql.Database) {
 			RctRoot:         mockNonCanonicalBlock2.ReceiptHash().String(),
 			UnclesHash:      mockNonCanonicalBlock2.UncleHash().String(),
 			Coinbase:        mocks.MockNonCanonicalHeader2.Coinbase.String(),
+			WithdrawalsRoot: shared.MaybeStringHash(mockNonCanonicalBlock2.Header().WithdrawalsHash),
 		},
 	}
 	expectedRes[0].Reward = shared.CalcEthBlockReward(mockBlock.Header(), mockBlock.Uncles(), mockBlock.Transactions(), mocks.MockReceipts).String()
