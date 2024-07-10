@@ -3,8 +3,8 @@ module github.com/cerc-io/plugeth-statediff
 go 1.21
 
 require (
-	github.com/cerc-io/eth-iterator-utils v0.2.0
-	github.com/cerc-io/eth-testing v0.4.0
+	github.com/cerc-io/eth-iterator-utils v0.3.1
+	github.com/cerc-io/eth-testing v0.5.1
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/georgysavva/scany v0.2.9
 	github.com/golang/mock v1.6.0

@@ -9,8 +9,9 @@ on:
       - ci-test
 
 env:
-  SO_VERSION: roysc/fix-various
-  FIXTURENET_ETH_STACKS_VERSION: plugeth-stack
+  SO_VERSION: v1.1.0-36d4969-202407091537
+  FIXTURENET_ETH_STACKS_REF: main
+  SYSTEM_TESTS_REF: main
 
 jobs:
   unit-tests:
@@ -53,23 +54,15 @@ jobs:
       - name: "Print Python version"
         run: python3 --version
       - name: Install stack-orchestrator
-        # run: |
-        #   curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
-        #   chmod +x laconic-so
-        #   echo PATH="$PATH:$(pwd)" >> $GITHUB_ENV
-        # FIXME: merge SO fixes and revert
-        uses: actions/checkout@v3
-        with:
-          repository: cerc-io/stack-orchestrator
-          ref: ${{ env.SO_VERSION }}
-          path: .tools/stack-orchestrator
-      - name: "Install stack orchestrator"
-        run: pip3 install .tools/stack-orchestrator
+        run: |
+          curl -L -O https://github.com/cerc-io/stack-orchestrator/releases/download/$SO_VERSION/laconic-so
+          chmod +x laconic-so
+          echo PATH="$PATH:$(pwd)" >> $GITHUB_ENV
       - name: Clone system-tests
         uses: actions/checkout@v4
         with:
           repository: cerc-io/system-tests
-          ref: v0.1.0-20240411
+          ref: ${{ env.SYSTEM_TESTS_REF }}
           path: ./system-tests
           token: ${{ secrets.CICD_REPO_TOKEN }}
           progress: false
@@ -77,7 +70,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: cerc-io/fixturenet-eth-stacks
-          ref: ${{ env.FIXTURENET_ETH_STACKS_VERSION }}
+          ref: ${{ env.FIXTURENET_ETH_STACKS_REF }}
           path: ./fixturenet-eth-stacks
           progress: false
       - name: Run testnet stack
@@ -94,13 +87,14 @@ jobs:
     name: Run compliance tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: ./plugeth-statediff
-      - uses: actions/checkout@v3
+      - name: Check out compliance tests
+        uses: actions/checkout@v4
         with:
           repository: cerc-io/eth-statediff-compliance
-          ref: v0.2.0
+          ref: v0.3.0
           path: ./eth-statediff-compliance
           token: ${{ secrets.CICD_REPO_TOKEN }}
       - uses: actions/setup-go@v4

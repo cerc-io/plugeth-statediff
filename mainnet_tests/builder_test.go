@@ -20,7 +20,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/cerc-io/eth-testing/chaindata/mainnet"
+	"github.com/cerc-io/eth-testing/chains/mainnet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"

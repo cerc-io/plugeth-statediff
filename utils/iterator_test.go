@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/cerc-io/eth-testing/chaindata/mainnet"
+	"github.com/cerc-io/eth-testing/chains/mainnet"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
