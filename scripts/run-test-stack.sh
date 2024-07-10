@@ -18,14 +18,15 @@ echo CERC_REMOTE_DEBUG=false >> $CONFIG_DIR/stack.env
 
 
 if [[ -z $SKIP_BUILD ]]; then
+  # Assume the tested image has been built separately.
   $laconic_so setup-repositories \
-    --exclude git.vdb.to/cerc-io/plugeth-statediff
-  # Assume the tested image has been built separately
+    --exclude git.vdb.to/cerc-io/plugeth-statediff,git.vdb.to/cerc-io/ipld-eth-server
   $laconic_so build-containers \
-    --exclude cerc/plugeth-statediff
+    --exclude cerc/plugeth-statediff,cerc/ipld-eth-server
 fi
 
 if ! $laconic_so deploy \
+  --exclude ipld-eth-server \
   --env-file $CONFIG_DIR/stack.env \
   --cluster test up
 then
