@@ -120,7 +120,7 @@ func NewCSVWriter(path string, watchedAddressesFilePath string, diff bool) (*CSV
 		return nil, fmt.Errorf("unable to create directory '%s': %w", path, err)
 	}
 
-	writers, err := makeFileWriters(path, schema.Tables)
+	writers, err := makeFileWriters(path, schema.EthTables)
 	if err != nil {
 		return nil, err
 	}

@@ -44,7 +44,7 @@ func FromBlockAndReceipts(block *types.Block, receipts []*types.Receipt) ([]IPLD
 func processTransactions(txs []*types.Transaction) ([]IPLD, error) {
 	var ethTxNodes []IPLD
 	for _, tx := range txs {
-		ethTx, err := encodeTx(tx)
+		ethTx, err := EncodeTx(tx)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func processTransactions(txs []*types.Transaction) ([]IPLD, error) {
 func processWithdrawals(withdrawals []*types.Withdrawal) ([]IPLD, error) {
 	var withdrawalNodes []IPLD
 	for _, withdrawal := range withdrawals {
-		ethW, err := encodeWithdrawal(withdrawal)
+		ethW, err := EncodeWithdrawal(withdrawal)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +80,7 @@ func processReceiptsAndLogs(rcts []*types.Receipt) ([]IPLD, [][]IPLD, error) {
 			return nil, nil, err
 		}
 
-		ethRct, err := encodeReceipt(rct)
+		ethRct, err := EncodeReceipt(rct)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -95,7 +95,7 @@ func processReceiptsAndLogs(rcts []*types.Receipt) ([]IPLD, [][]IPLD, error) {
 func processLogs(logs []*types.Log) ([]IPLD, error) {
 	logNodes := make([]IPLD, len(logs))
 	for idx, log := range logs {
-		logNode, err := encodeLog(log)
+		logNode, err := EncodeLog(log)
 		if err != nil {
 			return nil, err
 		}

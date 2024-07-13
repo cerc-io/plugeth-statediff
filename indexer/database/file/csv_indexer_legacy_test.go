@@ -67,7 +67,7 @@ func dumpCSVFileData(t *testing.T) {
 
 	localOutputDir := filepath.Join(workingDir, file.CSVTestConfig.OutputDir)
 
-	for _, tbl := range schema.Tables {
+	for _, tbl := range schema.EthTables {
 		err := test_helpers.DedupFile(file.TableFilePath(localOutputDir, tbl.Name))
 		require.NoError(t, err)
 

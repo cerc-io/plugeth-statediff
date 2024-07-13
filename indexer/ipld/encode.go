@@ -38,8 +38,8 @@ func EncodeHeader(header *types.Header) (IPLD, error) {
 	}, nil
 }
 
-// encodeTx converts a *types.Transaction to an IPLD node
-func encodeTx(tx *types.Transaction) (IPLD, error) {
+// EncodeTx converts a *types.Transaction to an IPLD node
+func EncodeTx(tx *types.Transaction) (IPLD, error) {
 	txRaw, err := tx.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -54,8 +54,8 @@ func encodeTx(tx *types.Transaction) (IPLD, error) {
 	}, nil
 }
 
-// encodeReceipt converts a types.Receipt to an IPLD node
-func encodeReceipt(receipt *types.Receipt) (IPLD, error) {
+// EncodeReceipt converts a types.Receipt to an IPLD node
+func EncodeReceipt(receipt *types.Receipt) (IPLD, error) {
 	rctRaw, err := receipt.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func encodeReceipt(receipt *types.Receipt) (IPLD, error) {
 	}, nil
 }
 
-// encodeLog converts a Log to an IPLD node
-func encodeLog(log *types.Log) (IPLD, error) {
+// EncodeLog converts a Log to an IPLD node
+func EncodeLog(log *types.Log) (IPLD, error) {
 	logRaw, err := rlp.EncodeToBytes(log)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func encodeLog(log *types.Log) (IPLD, error) {
 	}, nil
 }
 
-func encodeWithdrawal(w *types.Withdrawal) (IPLD, error) {
+func EncodeWithdrawal(w *types.Withdrawal) (IPLD, error) {
 	wRaw, err := rlp.EncodeToBytes(w)
 	if err != nil {
 		return nil, err

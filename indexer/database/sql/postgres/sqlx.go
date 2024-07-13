@@ -34,7 +34,6 @@ type SQLXDriver struct {
 	ctx      context.Context
 	db       *sqlx.DB
 	nodeInfo node.Info
-	nodeID   string
 }
 
 // ConnectSQLX initializes and returns a SQLX connection pool for postgres
@@ -53,32 +52,36 @@ func ConnectSQLX(ctx context.Context, config Config) (*sqlx.DB, error) {
 	return db, nil
 }
 
-// NewSQLXDriver returns a new sqlx driver for Postgres
+// ConnectSQLXDriver returns a new sqlx driver for Postgres
 // it initializes the connection pool and creates the node info table
-func NewSQLXDriver(ctx context.Context, config Config, node node.Info) (*SQLXDriver, error) {
+func ConnectSQLXDriver(ctx context.Context, config Config, node node.Info) (*SQLXDriver, error) {
 	db, err := ConnectSQLX(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	driver := &SQLXDriver{ctx: ctx, db: db, nodeInfo: node}
-	if err := driver.createNode(); err != nil {
+	driver := NewSQLXDriver(ctx, db)
+	if err := driver.createNode(node); err != nil {
 		return nil, err
 	}
 	return driver, nil
 }
 
-func (driver *SQLXDriver) createNode() error {
+func NewSQLXDriver(ctx context.Context, db *sqlx.DB) *SQLXDriver {
+	return &SQLXDriver{ctx: ctx, db: db}
+}
+
+func (driver *SQLXDriver) createNode(nodeInfo node.Info) error {
 	_, err := driver.db.Exec(
 		createNodeStm,
-		driver.nodeInfo.GenesisBlock,
-		driver.nodeInfo.NetworkID,
-		driver.nodeInfo.ID,
-		driver.nodeInfo.ClientName,
-		driver.nodeInfo.ChainID)
+		nodeInfo.GenesisBlock,
+		nodeInfo.NetworkID,
+		nodeInfo.ID,
+		nodeInfo.ClientName,
+		nodeInfo.ChainID)
 	if err != nil {
 		return ErrUnableToSetNode(err)
 	}
-	driver.nodeID = driver.nodeInfo.ID
+	driver.nodeInfo = nodeInfo
 	return nil
 }
 
@@ -118,7 +121,7 @@ func (driver *SQLXDriver) Stats() metrics.DbStats {
 
 // NodeID satisfies sql.Database
 func (driver *SQLXDriver) NodeID() string {
-	return driver.nodeID
+	return driver.nodeInfo.ID
 }
 
 // Close satisfies sql.Database/io.Closer

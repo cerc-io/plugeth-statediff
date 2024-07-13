@@ -19,10 +19,14 @@ package test_helpers
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/cerc-io/plugeth-statediff/indexer/database/sql"
+	"github.com/cerc-io/plugeth-statediff/indexer/database/sql/postgres"
+	"github.com/cerc-io/plugeth-statediff/indexer/shared/schema"
+	"github.com/jmoiron/sqlx"
 )
 
 // DedupFile removes duplicates from the given file
@@ -38,9 +42,6 @@ func DedupFile(filePath string) error {
 	for sc.Scan() {
 		s := sc.Text()
 		stmts[s] = struct{}{}
-	}
-	if err != nil {
-		return err
 	}
 
 	f.Close()
@@ -60,31 +61,30 @@ func DedupFile(filePath string) error {
 
 // TearDownDB is used to tear down the watcher dbs after tests
 func TearDownDB(t *testing.T, db sql.Database) {
-	ctx := context.Background()
-	tx, err := db.Begin(ctx)
+	err := ClearDB(db)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
 
-	statements := []string{
-		`TRUNCATE nodes`,
-		`TRUNCATE ipld.blocks`,
-		`TRUNCATE eth.header_cids`,
-		`TRUNCATE eth.uncle_cids`,
-		`TRUNCATE eth.transaction_cids`,
-		`TRUNCATE eth.receipt_cids`,
-		`TRUNCATE eth.state_cids`,
-		`TRUNCATE eth.storage_cids`,
-		`TRUNCATE eth.log_cids`,
-		`TRUNCATE eth.withdrawal_cids`,
-		`TRUNCATE eth_meta.watched_addresses`,
+func ClearSqlxDB(sqlxdb *sqlx.DB) error {
+	driver := postgres.NewSQLXDriver(context.Background(), sqlxdb)
+	db := postgres.NewPostgresDB(driver, false)
+	return ClearDB(db)
+}
+
+func ClearDB(db sql.Database) error {
+	ctx := context.Background()
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return err
 	}
-	for _, stm := range statements {
+
+	for _, tbl := range schema.AllTables {
+		stm := fmt.Sprintf("TRUNCATE %s", tbl.Name)
 		if _, err = tx.Exec(ctx, stm); err != nil {
-			t.Fatal(err)
+			return fmt.Errorf("error executing `%s`: %w", stm, err)
 		}
 	}
-	if err = tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
+	return tx.Commit(ctx)
 }

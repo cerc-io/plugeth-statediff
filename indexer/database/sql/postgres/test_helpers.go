@@ -30,7 +30,7 @@ func SetupSQLXDB() (sql.Database, error) {
 		return nil, err
 	}
 	conf.MaxIdle = 0
-	driver, err := NewSQLXDriver(context.Background(), conf, node.Info{})
+	driver, err := ConnectSQLXDriver(context.Background(), conf, node.Info{})
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func SetupSQLXDB() (sql.Database, error) {
 
 // SetupPGXDB is used to setup a pgx db for tests
 func SetupPGXDB(config Config) (sql.Database, error) {
-	driver, err := NewPGXDriver(context.Background(), config, node.Info{})
+	driver, err := ConnectPGXDriver(context.Background(), config, node.Info{})
 	if err != nil {
 		return nil, err
 	}

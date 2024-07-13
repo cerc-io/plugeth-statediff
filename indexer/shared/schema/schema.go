@@ -16,7 +16,7 @@
 
 package schema
 
-var Tables = []*Table{
+var EthTables = []*Table{
 	&TableIPLDBlock,
 	&TableNodeInfo,
 	&TableHeader,
@@ -28,6 +28,11 @@ var Tables = []*Table{
 	&TableLog,
 	&TableWithdrawal,
 }
+
+var AllTables = append(
+	EthTables,
+	&TableWatchedAddresses,
+)
 
 var TableIPLDBlock = Table{
 	Name: `ipld.blocks`,

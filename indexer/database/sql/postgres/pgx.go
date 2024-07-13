@@ -37,7 +37,6 @@ type PGXDriver struct {
 	ctx      context.Context
 	pool     *pgxpool.Pool
 	nodeInfo node.Info
-	nodeID   string
 	config   Config
 }
 
@@ -50,19 +49,23 @@ func ConnectPGX(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 	return pgxpool.ConnectConfig(ctx, pgConf)
 }
 
-// NewPGXDriver returns a new pgx driver
+// ConnectPGXDriver returns a new pgx driver
 // it initializes the connection pool and creates the node info table
-func NewPGXDriver(ctx context.Context, config Config, node node.Info) (*PGXDriver, error) {
+func ConnectPGXDriver(ctx context.Context, config Config, node node.Info) (*PGXDriver, error) {
 	dbPool, err := ConnectPGX(ctx, config)
 	if err != nil {
 		return nil, ErrDBConnectionFailed(err)
 	}
-	pg := &PGXDriver{ctx: ctx, pool: dbPool, nodeInfo: node, config: config}
-	nodeErr := pg.createNode()
+	pg := NewPGXDriver(ctx, dbPool, config)
+	nodeErr := pg.createNode(node)
 	if nodeErr != nil {
 		return &PGXDriver{}, ErrUnableToSetNode(nodeErr)
 	}
 	return pg, nil
+}
+
+func NewPGXDriver(ctx context.Context, pool *pgxpool.Pool, config Config) *PGXDriver {
+	return &PGXDriver{ctx: ctx, pool: pool, config: config}
 }
 
 // MakeConfig creates a pgxpool.Config from the provided Config
@@ -102,19 +105,19 @@ func MakeConfig(config Config) (*pgxpool.Config, error) {
 	return conf, nil
 }
 
-func (pgx *PGXDriver) createNode() error {
+func (pgx *PGXDriver) createNode(nodeInfo node.Info) error {
 	_, err := pgx.pool.Exec(
 		pgx.ctx,
 		createNodeStm,
-		pgx.nodeInfo.GenesisBlock,
-		pgx.nodeInfo.NetworkID,
-		pgx.nodeInfo.ID,
-		pgx.nodeInfo.ClientName,
-		pgx.nodeInfo.ChainID)
+		nodeInfo.GenesisBlock,
+		nodeInfo.NetworkID,
+		nodeInfo.ID,
+		nodeInfo.ClientName,
+		nodeInfo.ChainID)
 	if err != nil {
 		return ErrUnableToSetNode(err)
 	}
-	pgx.nodeID = pgx.nodeInfo.ID
+	pgx.nodeInfo = nodeInfo
 	return nil
 }
 
@@ -155,7 +158,7 @@ func (pgx *PGXDriver) Stats() metrics.DbStats {
 
 // NodeID satisfies sql.Database
 func (pgx *PGXDriver) NodeID() string {
-	return pgx.nodeID
+	return pgx.nodeInfo.ID
 }
 
 // Close satisfies sql.Database/io.Closer

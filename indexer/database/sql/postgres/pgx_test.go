@@ -94,7 +94,7 @@ func TestPostgresPGX(t *testing.T) {
 
 	t.Run("throws error when can't connect to the database", func(t *testing.T) {
 		goodInfo := node.Info{GenesisBlock: "GENESIS", NetworkID: "1", ID: "x123", ClientName: "geth"}
-		_, err := postgres.NewPGXDriver(ctx, postgres.Config{}, goodInfo)
+		_, err := postgres.ConnectPGXDriver(ctx, postgres.Config{}, goodInfo)
 		if err == nil {
 			t.Fatal("Expected an error")
 		}
@@ -106,7 +106,7 @@ func TestPostgresPGX(t *testing.T) {
 		badHash := fmt.Sprintf("x %s", strings.Repeat("1", 100))
 		badInfo := node.Info{GenesisBlock: badHash, NetworkID: "1", ID: "x123", ClientName: "geth"}
 
-		_, err := postgres.NewPGXDriver(ctx, pgConfig, badInfo)
+		_, err := postgres.ConnectPGXDriver(ctx, pgConfig, badInfo)
 		if err == nil {
 			t.Fatal("Expected an error")
 		}

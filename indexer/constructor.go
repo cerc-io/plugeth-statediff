@@ -70,12 +70,12 @@ func NewStateDiffIndexer(
 		var driver sql.Driver
 		switch pgc.Driver {
 		case postgres.PGX:
-			driver, err = postgres.NewPGXDriver(ctx, pgc, nodeInfo)
+			driver, err = postgres.ConnectPGXDriver(ctx, pgc, nodeInfo)
 			if err != nil {
 				return nil, nil, err
 			}
 		case postgres.SQLX:
-			driver, err = postgres.NewSQLXDriver(ctx, pgc, nodeInfo)
+			driver, err = postgres.ConnectSQLXDriver(ctx, pgc, nodeInfo)
 			if err != nil {
 				return nil, nil, err
 			}
