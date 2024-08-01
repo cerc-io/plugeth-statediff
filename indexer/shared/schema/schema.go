@@ -27,6 +27,7 @@ var EthTables = []*Table{
 	&TableReceipt,
 	&TableLog,
 	&TableWithdrawal,
+	&TableBlobHash,
 }
 
 var AllTables = append(
@@ -197,6 +198,15 @@ var TableWithdrawal = Table{
 		{Name: "amount", Type: Dinteger},
 	},
 	UpsertClause: OnConflict("block_number", "header_id", "index"),
+}
+
+var TableBlobHash = Table{
+	Name: "eth.blob_hashes",
+	Columns: []Column{
+		{Name: "tx_hash", Type: Dvarchar},
+		{Name: "index", Type: Dinteger},
+		{Name: "blob_hash", Type: Dbytea},
+	},
 }
 
 var TableWatchedAddresses = Table{

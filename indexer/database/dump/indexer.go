@@ -273,6 +273,20 @@ func (sdi *StateDiffIndexer) processObjects(tx *BatchTx, args processArgs) error
 			return err
 		}
 
+		if trx.Type() == types.BlobTxType {
+			blobHashes := trx.BlobHashes()
+			for i, hash := range blobHashes {
+				bhModel := models.BlobHashModel{
+					TxHash:   trxID,
+					Index:    uint64(i),
+					BlobHash: hash,
+				}
+				if _, err := fmt.Fprintf(sdi.dump, "%+v\r\n", bhModel); err != nil {
+					return err
+				}
+			}
+		}
+
 		// this is the contract address if this receipt is for a contract creation tx
 		contract := shared.HandleZeroAddr(receipt.ContractAddress)
 

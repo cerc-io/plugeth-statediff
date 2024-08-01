@@ -109,16 +109,14 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, 5, len(trxs))
-	require.Contains(t, trxs, trx1CID.String())
-	require.Contains(t, trxs, trx2CID.String())
-	require.Contains(t, trxs, trx3CID.String())
-	require.Contains(t, trxs, trx4CID.String())
-	require.Contains(t, trxs, trx5CID.String())
+	require.Equal(t, len(txCIDs), len(trxs))
+	for _, c := range txCIDs {
+		require.Contains(t, trxs, c.String())
+	}
 
 	transactions := mocks.MockBlock.Transactions()
 	type txResult struct {
-		TxType uint8 `db:"tx_type"`
+		TxType int `db:"tx_type"`
 		Value  string
 	}
 	for _, c := range trxs {
@@ -132,9 +130,11 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			t.Fatal(err)
 		}
 		txTypeAndValueStr := `SELECT tx_type, CAST(value as TEXT) FROM eth.transaction_cids WHERE cid = $1`
+		txBlobHashQuery := `SELECT blob_hash FROM eth.blob_hashes WHERE tx_hash = $1`
+		txBlobIndexQuery := `SELECT index FROM eth.blob_hashes WHERE tx_hash = $1`
 		switch c {
-		case trx1CID.String():
-			require.Equal(t, tx1, data)
+		case txCIDs[0].String():
+			require.Equal(t, encodedTxs[0], data)
 			txRes := new(txResult)
 			err = db.QueryRow(context.Background(), txTypeAndValueStr, c).Scan(&txRes.TxType, &txRes.Value)
 			if err != nil {
@@ -146,8 +146,8 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			if txRes.Value != transactions[0].Value().String() {
 				t.Fatalf("expected tx value %s got %s", transactions[0].Value().String(), txRes.Value)
 			}
-		case trx2CID.String():
-			require.Equal(t, tx2, data)
+		case txCIDs[1].String():
+			require.Equal(t, encodedTxs[1], data)
 			txRes := new(txResult)
 			err = db.QueryRow(context.Background(), txTypeAndValueStr, c).Scan(&txRes.TxType, &txRes.Value)
 			if err != nil {
@@ -159,8 +159,8 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			if txRes.Value != transactions[1].Value().String() {
 				t.Fatalf("expected tx value %s got %s", transactions[1].Value().String(), txRes.Value)
 			}
-		case trx3CID.String():
-			require.Equal(t, tx3, data)
+		case txCIDs[2].String():
+			require.Equal(t, encodedTxs[2], data)
 			txRes := new(txResult)
 			err = db.QueryRow(context.Background(), txTypeAndValueStr, c).Scan(&txRes.TxType, &txRes.Value)
 			if err != nil {
@@ -172,8 +172,8 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			if txRes.Value != transactions[2].Value().String() {
 				t.Fatalf("expected tx value %s got %s", transactions[2].Value().String(), txRes.Value)
 			}
-		case trx4CID.String():
-			require.Equal(t, tx4, data)
+		case txCIDs[3].String():
+			require.Equal(t, encodedTxs[3], data)
 			txRes := new(txResult)
 			err = db.QueryRow(context.Background(), txTypeAndValueStr, c).Scan(&txRes.TxType, &txRes.Value)
 			if err != nil {
@@ -185,8 +185,8 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			if txRes.Value != transactions[3].Value().String() {
 				t.Fatalf("expected tx value %s got %s", transactions[3].Value().String(), txRes.Value)
 			}
-		case trx5CID.String():
-			require.Equal(t, tx5, data)
+		case txCIDs[4].String():
+			require.Equal(t, encodedTxs[4], data)
 			txRes := new(txResult)
 			err = db.QueryRow(context.Background(), txTypeAndValueStr, c).Scan(&txRes.TxType, &txRes.Value)
 			if err != nil {
@@ -198,6 +198,28 @@ func DoTestPublishAndIndexTransactionIPLDs(t *testing.T, db sql.Database) {
 			if txRes.Value != transactions[4].Value().String() {
 				t.Fatalf("expected tx value %s got %s", transactions[4].Value().String(), txRes.Value)
 			}
+		case txCIDs[5].String():
+			require.Equal(t, encodedTxs[5], data)
+			var txRes txResult
+			err = db.QueryRow(context.Background(), txTypeAndValueStr, c).Scan(&txRes.TxType, &txRes.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, types.BlobTxType, txRes.TxType)
+			require.Equal(t, transactions[5].Value().String(), txRes.Value)
+
+			var txBlobHashes []common.Hash
+			var txBlobIndices []uint64
+			err = db.Select(context.Background(), &txBlobHashes, txBlobHashQuery, transactions[5].Hash().String())
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, transactions[5].BlobHashes(), txBlobHashes)
+			err = db.Select(context.Background(), &txBlobIndices, txBlobIndexQuery, transactions[5].Hash().String())
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, []uint64{0, 1}, txBlobIndices)
 		}
 	}
 }
@@ -255,12 +277,10 @@ func DoTestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Equal(t, 5, len(rcts))
-	require.Contains(t, rcts, rct1CID.String())
-	require.Contains(t, rcts, rct2CID.String())
-	require.Contains(t, rcts, rct3CID.String())
-	require.Contains(t, rcts, rct4CID.String())
-	require.Contains(t, rcts, rct5CID.String())
+	require.Equal(t, len(rctCIDs), len(rcts))
+	for _, c := range rctCIDs {
+		require.Contains(t, rcts, c.String())
+	}
 
 	for idx, c := range rcts {
 		result := make([]models.IPLDModel, 0)
@@ -289,8 +309,8 @@ func DoTestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 
 		postStatePgStr := `SELECT post_state FROM eth.receipt_cids WHERE cid = $1`
 		switch c {
-		case rct1CID.String():
-			require.Equal(t, rct1, data)
+		case rctCIDs[0].String():
+			require.Equal(t, encodedRcts[0], data)
 			var postStatus uint64
 			pgStr = `SELECT post_status FROM eth.receipt_cids WHERE cid = $1`
 			err = db.Get(context.Background(), &postStatus, pgStr, c)
@@ -298,32 +318,40 @@ func DoTestPublishAndIndexReceiptIPLDs(t *testing.T, db sql.Database) {
 				t.Fatal(err)
 			}
 			require.Equal(t, mocks.ExpectedPostStatus, postStatus)
-		case rct2CID.String():
-			require.Equal(t, rct2, data)
+		case rctCIDs[1].String():
+			require.Equal(t, encodedRcts[1], data)
 			var postState string
 			err = db.Get(context.Background(), &postState, postStatePgStr, c)
 			if err != nil {
 				t.Fatal(err)
 			}
 			require.Equal(t, mocks.ExpectedPostState1, postState)
-		case rct3CID.String():
-			require.Equal(t, rct3, data)
+		case rctCIDs[2].String():
+			require.Equal(t, encodedRcts[2], data)
 			var postState string
 			err = db.Get(context.Background(), &postState, postStatePgStr, c)
 			if err != nil {
 				t.Fatal(err)
 			}
 			require.Equal(t, mocks.ExpectedPostState2, postState)
-		case rct4CID.String():
-			require.Equal(t, rct4, data)
+		case rctCIDs[3].String():
+			require.Equal(t, encodedRcts[3], data)
 			var postState string
 			err = db.Get(context.Background(), &postState, postStatePgStr, c)
 			if err != nil {
 				t.Fatal(err)
 			}
 			require.Equal(t, mocks.ExpectedPostState3, postState)
-		case rct5CID.String():
-			require.Equal(t, rct5, data)
+		case rctCIDs[4].String():
+			require.Equal(t, encodedRcts[4], data)
+			var postState string
+			err = db.Get(context.Background(), &postState, postStatePgStr, c)
+			if err != nil {
+				t.Fatal(err)
+			}
+			require.Equal(t, mocks.ExpectedPostState3, postState)
+		case rctCIDs[5].String():
+			require.Equal(t, encodedRcts[5], data)
 			var postState string
 			err = db.Get(context.Background(), &postState, postStatePgStr, c)
 			if err != nil {
@@ -723,62 +751,19 @@ func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database
 
 	// expected transactions in the canonical block
 	mockBlockTxs := mocks.MockBlock.Transactions()
-	expectedBlockTxs := []models.TxModel{
-		{
+	expectedBlockTxs := make([]models.TxModel, len(mockBlockTxs))
+	for i, tx := range mockBlockTxs {
+		expectedBlockTxs[i] = models.TxModel{
 			BlockNumber: mockBlock.Number().String(),
 			HeaderID:    mockBlock.Hash().String(),
-			TxHash:      mockBlockTxs[0].Hash().String(),
-			CID:         trx1CID.String(),
-			Dst:         shared.HandleZeroAddrPointer(mockBlockTxs[0].To()),
+			TxHash:      tx.Hash().String(),
+			CID:         txCIDs[i].String(),
+			Dst:         shared.HandleZeroAddrPointer(tx.To()),
 			Src:         mocks.SenderAddr.String(),
-			Index:       0,
-			Type:        mockBlockTxs[0].Type(),
-			Value:       mockBlockTxs[0].Value().String(),
-		},
-		{
-			BlockNumber: mockBlock.Number().String(),
-			HeaderID:    mockBlock.Hash().String(),
-			TxHash:      mockBlockTxs[1].Hash().String(),
-			CID:         trx2CID.String(),
-			Dst:         shared.HandleZeroAddrPointer(mockBlockTxs[1].To()),
-			Src:         mocks.SenderAddr.String(),
-			Index:       1,
-			Type:        mockBlockTxs[1].Type(),
-			Value:       mockBlockTxs[1].Value().String(),
-		},
-		{
-			BlockNumber: mockBlock.Number().String(),
-			HeaderID:    mockBlock.Hash().String(),
-			TxHash:      mockBlockTxs[2].Hash().String(),
-			CID:         trx3CID.String(),
-			Dst:         shared.HandleZeroAddrPointer(mockBlockTxs[2].To()),
-			Src:         mocks.SenderAddr.String(),
-			Index:       2,
-			Type:        mockBlockTxs[2].Type(),
-			Value:       mockBlockTxs[2].Value().String(),
-		},
-		{
-			BlockNumber: mockBlock.Number().String(),
-			HeaderID:    mockBlock.Hash().String(),
-			TxHash:      mockBlockTxs[3].Hash().String(),
-			CID:         trx4CID.String(),
-			Dst:         shared.HandleZeroAddrPointer(mockBlockTxs[3].To()),
-			Src:         mocks.SenderAddr.String(),
-			Index:       3,
-			Type:        mockBlockTxs[3].Type(),
-			Value:       mockBlockTxs[3].Value().String(),
-		},
-		{
-			BlockNumber: mockBlock.Number().String(),
-			HeaderID:    mockBlock.Hash().String(),
-			TxHash:      mockBlockTxs[4].Hash().String(),
-			CID:         trx5CID.String(),
-			Dst:         shared.HandleZeroAddrPointer(mockBlockTxs[4].To()),
-			Src:         mocks.SenderAddr.String(),
-			Index:       4,
-			Type:        mockBlockTxs[4].Type(),
-			Value:       mockBlockTxs[4].Value().String(),
-		},
+			Index:       int64(i),
+			Type:        tx.Type(),
+			Value:       tx.Value().String(),
+		}
 	}
 
 	// expected transactions in the non-canonical block at London height
@@ -788,7 +773,7 @@ func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database
 			BlockNumber: mockNonCanonicalBlock.Number().String(),
 			HeaderID:    mockNonCanonicalBlock.Hash().String(),
 			TxHash:      mockNonCanonicalBlockTxs[0].Hash().String(),
-			CID:         trx2CID.String(),
+			CID:         txCIDs[1].String(),
 			Dst:         mockNonCanonicalBlockTxs[0].To().String(),
 			Src:         mocks.SenderAddr.String(),
 			Index:       0,
@@ -799,7 +784,7 @@ func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database
 			BlockNumber: mockNonCanonicalBlock.Number().String(),
 			HeaderID:    mockNonCanonicalBlock.Hash().String(),
 			TxHash:      mockNonCanonicalBlockTxs[1].Hash().String(),
-			CID:         trx5CID.String(),
+			CID:         txCIDs[4].String(),
 			Dst:         mockNonCanonicalBlockTxs[1].To().String(),
 			Src:         mocks.SenderAddr.String(),
 			Index:       1,
@@ -815,7 +800,7 @@ func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database
 			BlockNumber: mockNonCanonicalBlock2.Number().String(),
 			HeaderID:    mockNonCanonicalBlock2.Hash().String(),
 			TxHash:      mockNonCanonicalBlock2Txs[0].Hash().String(),
-			CID:         trx3CID.String(),
+			CID:         txCIDs[2].String(),
 			Dst:         "",
 			Src:         mocks.SenderAddr.String(),
 			Index:       0,
@@ -826,7 +811,7 @@ func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database
 			BlockNumber: mockNonCanonicalBlock2.Number().String(),
 			HeaderID:    mockNonCanonicalBlock2.Hash().String(),
 			TxHash:      mockNonCanonicalBlock2Txs[1].Hash().String(),
-			CID:         trx5CID.String(),
+			CID:         txCIDs[4].String(),
 			Dst:         mockNonCanonicalBlock2Txs[1].To().String(),
 			Src:         mocks.SenderAddr.String(),
 			Index:       1,
@@ -863,14 +848,12 @@ func DoTestPublishAndIndexTransactionsNonCanonical(t *testing.T, db sql.Database
 	// check indexed IPLD blocks
 	var data []byte
 
-	txCIDs := []cid.Cid{trx1CID, trx2CID, trx3CID, trx4CID, trx5CID}
-	txRLPs := [][]byte{tx1, tx2, tx3, tx4, tx5}
 	for i, txCID := range txCIDs {
 		err = db.Get(context.Background(), &data, ipfsPgGet, txCID.String(), mocks.BlockNumber.Uint64())
 		if err != nil {
 			t.Fatal(err)
 		}
-		require.Equal(t, txRLPs[i], data)
+		require.Equal(t, encodedTxs[i], data)
 	}
 }
 
@@ -886,11 +869,10 @@ func DoTestPublishAndIndexReceiptsNonCanonical(t *testing.T, db sql.Database) {
 	}
 
 	// expected receipts in the canonical block
-	rctCids := []cid.Cid{rct1CID, rct2CID, rct3CID, rct4CID, rct5CID}
 	expectedBlockRctsMap := make(map[string]models.ReceiptModel, len(mocks.MockReceipts))
 	for i, mockBlockRct := range mocks.MockReceipts {
-		rctModel := createRctModel(mockBlockRct, rctCids[i], mockBlock.Number().String())
-		expectedBlockRctsMap[rctCids[i].String()] = rctModel
+		rctModel := createRctModel(mockBlockRct, rctCIDs[i], mockBlock.Number().String())
+		expectedBlockRctsMap[rctCIDs[i].String()] = rctModel
 	}
 
 	// expected receipts in the non-canonical block at London height
@@ -945,10 +927,8 @@ func DoTestPublishAndIndexReceiptsNonCanonical(t *testing.T, db sql.Database) {
 	// check indexed rct IPLD blocks
 	var data []byte
 
-	rctRLPs := [][]byte{
-		rct1, rct2, rct3, rct4, rct5, nonCanonicalBlockRct1, nonCanonicalBlockRct2,
-	}
-	for i, rctCid := range append(rctCids, nonCanonicalBlockRctCids...) {
+	rctRLPs := append(encodedRcts, nonCanonicalBlockRct1, nonCanonicalBlockRct2)
+	for i, rctCid := range append(rctCIDs, nonCanonicalBlockRctCids...) {
 		err = db.Get(context.Background(), &data, ipfsPgGet, rctCid.String(), mocks.BlockNumber.Uint64())
 		if err != nil {
 			t.Fatal(err)

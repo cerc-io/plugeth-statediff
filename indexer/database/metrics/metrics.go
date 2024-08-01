@@ -52,6 +52,8 @@ type IndexerMetricsHandles struct {
 	BlocksCounter metrics.Counter
 	// The total number of processed transactions
 	TransactionsCounter metrics.Counter
+	// The total number of indexed blob hashes
+	BlobHashCounter metrics.Counter
 	// The total number of processed receipts
 	ReceiptsCounter metrics.Counter
 	// The total number of processed logs
@@ -90,6 +92,7 @@ func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	ctx := IndexerMetricsHandles{
 		BlocksCounter:                     metrics.NewCounter(),
 		TransactionsCounter:               metrics.NewCounter(),
+		BlobHashCounter:                   metrics.NewCounter(),
 		ReceiptsCounter:                   metrics.NewCounter(),
 		LogsCounter:                       metrics.NewCounter(),
 		WithdrawalsCounter:                metrics.NewCounter(),
@@ -114,6 +117,7 @@ func RegisterIndexerMetrics(reg metrics.Registry) IndexerMetricsHandles {
 	subsys := "indexer"
 	reg.Register(metricName(subsys, "blocks"), ctx.BlocksCounter)
 	reg.Register(metricName(subsys, "transactions"), ctx.TransactionsCounter)
+	reg.Register(metricName(subsys, "blob_hashes"), ctx.BlobHashCounter)
 	reg.Register(metricName(subsys, "receipts"), ctx.ReceiptsCounter)
 	reg.Register(metricName(subsys, "logs"), ctx.LogsCounter)
 	reg.Register(metricName(subsys, "withdrawals"), ctx.WithdrawalsCounter)

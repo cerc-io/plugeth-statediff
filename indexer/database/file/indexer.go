@@ -191,7 +191,10 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	t = time.Now()
 
 	// write uncles
-	sdi.processUncles(headerID, block.Number(), block.UncleHash(), block.Uncles())
+	err = sdi.processUncles(headerID, block.Number(), block.UncleHash(), block.Uncles())
+	if err != nil {
+		return nil, err
+	}
 	tDiff = time.Since(t)
 	metrics.IndexerMetrics.UncleProcessingTimer.Update(tDiff)
 	traceMsg += fmt.Sprintf("uncle processing time: %s\r\n", tDiff.String())
@@ -200,6 +203,7 @@ func (sdi *StateDiffIndexer) PushBlock(block *types.Block, receipts types.Receip
 	err = sdi.processObjects(processArgs{
 		headerID:    headerID,
 		blockNumber: block.Number(),
+		blockTime:   block.Time(),
 		receipts:    receipts,
 		txs:         transactions,
 		withdrawals: block.Withdrawals(),
@@ -337,6 +341,17 @@ func (sdi *StateDiffIndexer) processObjects(args processArgs) error {
 			Value:       val,
 		}
 		sdi.fileWriter.upsertTransactionCID(txModel)
+
+		if trx.Type() == types.BlobTxType {
+			blobHashes := trx.BlobHashes()
+			for i, hash := range blobHashes {
+				sdi.fileWriter.upsertBlobHash(models.BlobHashModel{
+					TxHash:   txID,
+					Index:    uint64(i),
+					BlobHash: hash,
+				})
+			}
+		}
 
 		// this is the contract address if this receipt is for a contract creation tx
 		contract := shared.HandleZeroAddr(receipt.ContractAddress)

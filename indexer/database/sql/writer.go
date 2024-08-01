@@ -210,6 +210,30 @@ func (w *Writer) upsertTransactionCID(tx Tx, transaction models.TxModel) error {
 }
 
 /*
+INSERT INTO eth.blob_hashes (tx_hash, index, blob_hash) VALUES ($1, $2, $3)
+ON CONFLICT (tx_hash, index) DO NOTHING
+*/
+func (w *Writer) upsertBlobHash(tx Tx, blobHash models.BlobHashModel) error {
+	if w.useCopyForTx(tx) {
+		rows := toRows(toRow(blobHash.TxHash, blobHash.Index, blobHash.BlobHash))
+		_, err := tx.CopyFrom(w.db.Context(), schema.TableBlobHash.TableName(), schema.TableBlobHash.ColumnNames(), rows)
+		if err != nil {
+			return insertError{"eth.blob_hashes", err, "COPY", blobHash}
+		}
+	} else {
+		_, err := tx.Exec(w.db.Context(), w.db.InsertBlobHashStm(),
+			blobHash.TxHash,
+			blobHash.Index,
+			blobHash.BlobHash,
+		)
+		if err != nil {
+			return insertError{"eth.blob_hashes", err, w.db.InsertBlobHashStm(), blobHash}
+		}
+	}
+	return nil
+}
+
+/*
 INSERT INTO eth.receipt_cids (block_number, header_id, tx_id, cid, contract, post_state, post_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (tx_id, header_id, block_number) DO NOTHING
 */

@@ -81,6 +81,11 @@ func (db *DB) InsertTxStm() string {
 	return schema.TableTransaction.PreparedInsert(db.upsert)
 }
 
+// InsertBlobHashStm satisfies the sql.Statements interface
+func (db *DB) InsertBlobHashStm() string {
+	return schema.TableBlobHash.PreparedInsert(db.upsert)
+}
+
 // InsertRctStm satisfies the sql.Statements interface
 func (db *DB) InsertRctStm() string {
 	return schema.TableReceipt.PreparedInsert(db.upsert)

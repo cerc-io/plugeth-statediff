@@ -50,7 +50,7 @@ var (
 	// canonical block at London height
 	// includes 5 transactions: 3 Legacy + 1 EIP-2930 + 1 EIP-1559
 	MockHeader = types.Header{
-		Time:        0,
+		Time:        BlockTime,
 		Number:      new(big.Int).Set(BlockNumber),
 		Root:        common.HexToHash("0x0"),
 		TxHash:      common.HexToHash("0x0"),
@@ -434,13 +434,15 @@ func createLegacyTransactionsAndReceipts(config *params.ChainConfig, blockNumber
 	return types.Transactions{signedTrx1, signedTrx2, signedTrx3}, types.Receipts{mockReceipt1, mockReceipt2, mockReceipt3}, senderAddr
 }
 
-// createTransactionsAndReceipts is a helper function to generate signed mock transactions and mock receipts with mock logs
+// createTransactionsAndReceipts generates signed mock transactions and mock receipts with mock logs, and returns the address of the sender with them.
 func createTransactionsAndReceipts(config *params.ChainConfig, blockNumber *big.Int, blockTime uint64) (types.Transactions, types.Receipts, common.Address) {
+	const txCount = 6
 	// make transactions
-	trx1 := types.NewTransaction(0, Address, big.NewInt(1000), 50, big.NewInt(100), []byte{})
-	trx2 := types.NewTransaction(1, AnotherAddress, big.NewInt(2000), 100, big.NewInt(200), []byte{})
-	trx3 := types.NewContractCreation(2, big.NewInt(1500), 75, big.NewInt(150), MockContractByteCode)
-	trx4 := types.NewTx(&types.AccessListTx{
+	txs := make(types.Transactions, txCount)
+	txs[0] = types.NewTransaction(0, Address, big.NewInt(1000), 50, big.NewInt(100), []byte{})
+	txs[1] = types.NewTransaction(1, AnotherAddress, big.NewInt(2000), 100, big.NewInt(200), []byte{})
+	txs[2] = types.NewContractCreation(2, big.NewInt(1500), 75, big.NewInt(150), MockContractByteCode)
+	txs[3] = types.NewTx(&types.AccessListTx{
 		ChainID:  config.ChainID,
 		Nonce:    0,
 		GasPrice: big.NewInt(100),
@@ -453,7 +455,7 @@ func createTransactionsAndReceipts(config *params.ChainConfig, blockNumber *big.
 			AccessListEntry2,
 		},
 	})
-	trx5 := types.NewTx(&types.DynamicFeeTx{
+	txs[4] = types.NewTx(&types.DynamicFeeTx{
 		ChainID:   config.ChainID,
 		Nonce:     0,
 		GasTipCap: big.NewInt(100),
@@ -467,6 +469,20 @@ func createTransactionsAndReceipts(config *params.ChainConfig, blockNumber *big.
 			AccessListEntry2,
 		},
 	})
+	txs[5] = types.NewTx(&types.BlobTx{
+		ChainID:    uint256.MustFromBig(config.ChainID),
+		Nonce:      0,
+		GasTipCap:  uint256.NewInt(100),
+		GasFeeCap:  uint256.NewInt(100),
+		Gas:        50,
+		To:         AnotherAddress,
+		Value:      uint256.NewInt(0),
+		BlobFeeCap: uint256.NewInt(1e6),
+		BlobHashes: []common.Hash{
+			common.HexToHash("0x0100000000000000000000000000000000000000000000000000000000000001"),
+			common.HexToHash("0x0100000000000000000000000000000000000000000000000000000000000002"),
+		},
+	})
 
 	transactionSigner := types.MakeSigner(config, blockNumber, blockTime)
 	mockCurve := elliptic.P256()
@@ -474,60 +490,56 @@ func createTransactionsAndReceipts(config *params.ChainConfig, blockNumber *big.
 	if err != nil {
 		log.Crit(err.Error())
 	}
-	signedTrx1, err := types.SignTx(trx1, transactionSigner, mockPrvKey)
-	if err != nil {
-		log.Crit(err.Error())
+	var signedTxs types.Transactions
+	for _, tx := range txs {
+		signed, err := types.SignTx(tx, transactionSigner, mockPrvKey)
+		if err != nil {
+			log.Crit(err.Error())
+		}
+		signedTxs = append(signedTxs, signed)
 	}
-	signedTrx2, err := types.SignTx(trx2, transactionSigner, mockPrvKey)
-	if err != nil {
-		log.Crit(err.Error())
-	}
-	signedTrx3, err := types.SignTx(trx3, transactionSigner, mockPrvKey)
-	if err != nil {
-		log.Crit(err.Error())
-	}
-	signedTrx4, err := types.SignTx(trx4, transactionSigner, mockPrvKey)
-	if err != nil {
-		log.Crit(err.Error())
-	}
-	signedTrx5, err := types.SignTx(trx5, transactionSigner, mockPrvKey)
-	if err != nil {
-		log.Crit(err.Error())
-	}
-
-	senderAddr, err := types.Sender(transactionSigner, signedTrx1) // same for both trx
+	senderAddr, err := types.Sender(transactionSigner, signedTxs[0]) // same for both trx
 	if err != nil {
 		log.Crit(err.Error())
 	}
 
 	// make receipts
-	mockReceipt1 := types.NewReceipt(nil, false, 50)
-	mockReceipt1.Logs = []*types.Log{MockLog1}
-	mockReceipt1.TxHash = signedTrx1.Hash()
-	mockReceipt2 := types.NewReceipt(common.HexToHash("0x1").Bytes(), false, 100)
-	mockReceipt2.Logs = []*types.Log{MockLog2, ShortLog1}
-	mockReceipt2.TxHash = signedTrx2.Hash()
-	mockReceipt3 := types.NewReceipt(common.HexToHash("0x2").Bytes(), false, 75)
-	mockReceipt3.Logs = []*types.Log{}
-	mockReceipt3.TxHash = signedTrx3.Hash()
-	mockReceipt4 := &types.Receipt{
+	receipts := make(types.Receipts, txCount)
+	receipts[0] = types.NewReceipt(nil, false, 50)
+	receipts[0].Logs = []*types.Log{MockLog1}
+	receipts[0].TxHash = signedTxs[0].Hash()
+	receipts[1] = types.NewReceipt(common.HexToHash("0x1").Bytes(), false, 100)
+	receipts[1].Logs = []*types.Log{MockLog2, ShortLog1}
+	receipts[1].TxHash = signedTxs[1].Hash()
+	receipts[2] = types.NewReceipt(common.HexToHash("0x2").Bytes(), false, 75)
+	receipts[2].Logs = []*types.Log{}
+	receipts[2].TxHash = signedTxs[2].Hash()
+	receipts[3] = &types.Receipt{
 		Type:              types.AccessListTxType,
 		PostState:         common.HexToHash("0x3").Bytes(),
 		Status:            types.ReceiptStatusSuccessful,
 		CumulativeGasUsed: 175,
 		Logs:              []*types.Log{MockLog3, MockLog4, ShortLog2},
-		TxHash:            signedTrx4.Hash(),
+		TxHash:            signedTxs[3].Hash(),
 	}
-	mockReceipt5 := &types.Receipt{
+	receipts[4] = &types.Receipt{
 		Type:              types.DynamicFeeTxType,
 		PostState:         common.HexToHash("0x3").Bytes(),
 		Status:            types.ReceiptStatusSuccessful,
 		CumulativeGasUsed: 175,
 		Logs:              []*types.Log{},
-		TxHash:            signedTrx5.Hash(),
+		TxHash:            signedTxs[4].Hash(),
+	}
+	receipts[5] = &types.Receipt{
+		Type:              types.BlobTxType,
+		PostState:         common.HexToHash("0x3").Bytes(),
+		Status:            types.ReceiptStatusSuccessful,
+		CumulativeGasUsed: 175,
+		Logs:              []*types.Log{},
+		TxHash:            signedTxs[5].Hash(),
 	}
 
-	return types.Transactions{signedTrx1, signedTrx2, signedTrx3, signedTrx4, signedTrx5}, types.Receipts{mockReceipt1, mockReceipt2, mockReceipt3, mockReceipt4, mockReceipt5}, senderAddr
+	return signedTxs, receipts, senderAddr
 }
 
 // createNonCanonicalBlockReceipts is a helper function to generate mock receipts with mock logs for non-canonical blocks
